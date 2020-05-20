@@ -17,6 +17,14 @@ stip_length_type solve_result_max(void)
 {
   return solve_result_max_stored;
 }
+boolean solve_result_must_equal(stip_length_type const r)
+{
+  return ((solve_result_min_stored == r) && (solve_result_max_stored == r));
+}
+boolean solve_result_might_equal(stip_length_type const r)
+{
+  return ((solve_result_min_stored <= r) && (solve_result_max_stored >= r));
+}
 void set_solve_result(stip_length_type const r)
 {
   solve_result_min_stored = r;

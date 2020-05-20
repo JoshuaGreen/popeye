@@ -13,6 +13,8 @@ extern stip_length_type solve_nr_remaining;
 
 stip_length_type solve_result_min(void);
 stip_length_type solve_result_max(void);
+boolean solve_result_must_equal(stip_length_type r);
+boolean solve_result_might_equal(stip_length_type r);
 void set_solve_result(stip_length_type r);
 void set_solve_result_range(stip_length_type min_result, stip_length_type max_result);
 void set_solve_result_min(stip_length_type min_result);
