@@ -54,7 +54,8 @@ static boolean is_mate_square(Side other_side)
 
     {
       stip_length_type const save_solve_nr_remaining = solve_nr_remaining;
-      stip_length_type const save_solve_result = solve_result;
+      stip_length_type const save_solve_result_min = solve_result_min();
+      stip_length_type const save_solve_result_max = solve_result_max();
 
       solve_nr_remaining = length_unspecified;
 
@@ -63,7 +64,7 @@ static boolean is_mate_square(Side other_side)
         result = true;
 
       solve_nr_remaining = save_solve_nr_remaining;
-      set_solve_result(save_solve_result);
+      set_solve_result_range(save_solve_result_min, save_solve_result_max);
     }
 
     empty_square(being_solved.king_square[other_side]);

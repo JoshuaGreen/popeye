@@ -15,7 +15,8 @@ stip_length_type conditional_pipe_solve_delegate(slice_index si)
 {
   stip_length_type result;
   stip_length_type const save_solve_nr_remaining = solve_nr_remaining;
-  stip_length_type const save_solve_result = solve_result;
+  stip_length_type const save_solve_result_min = solve_result_min();
+  stip_length_type const save_solve_result_max = solve_result_max();
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
@@ -27,7 +28,7 @@ stip_length_type conditional_pipe_solve_delegate(slice_index si)
   result = solve_result;
 
   solve_nr_remaining = save_solve_nr_remaining;
-  set_solve_result(save_solve_result);
+  set_solve_result_range(save_solve_result_min, save_solve_result_max);
 
   TraceFunctionExit(__func__);
   TraceFunctionResult("%u",result);
