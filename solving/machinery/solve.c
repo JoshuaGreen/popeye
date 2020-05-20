@@ -6,8 +6,8 @@
 #include "debugging/assert.h"
 
 stip_length_type solve_nr_remaining = length_unspecified;
-static stip_length_type solve_result_min_stored = MOVE_HAS_NOT_SOLVED_LENGTH();
-static stip_length_type solve_result_max_stored = MOVE_HAS_NOT_SOLVED_LENGTH();
+static stip_length_type solve_result_min_stored;
+static stip_length_type solve_result_max_stored;
 
 stip_length_type solve_result_min(void)
 {
