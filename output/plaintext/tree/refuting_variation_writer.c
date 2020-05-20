@@ -70,7 +70,7 @@ void output_plaintext_tree_refuting_variation_writer_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (get_solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
+  if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
   {
     unsigned int const move_depth = depth(nbply)+output_plaintext_nr_move_inversions;
     write_refuting_varation(move_depth);

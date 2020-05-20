@@ -6,49 +6,49 @@
 #include "debugging/assert.h"
 
 stip_length_type solve_nr_remaining = length_unspecified;
-static stip_length_type solve_result_min = MOVE_HAS_NOT_SOLVED_LENGTH();
-static stip_length_type solve_result_max = MOVE_HAS_NOT_SOLVED_LENGTH();
+static stip_length_type solve_result_min_stored = MOVE_HAS_NOT_SOLVED_LENGTH();
+static stip_length_type solve_result_max_stored = MOVE_HAS_NOT_SOLVED_LENGTH();
 
-stip_length_type get_solve_result_min(void)
+stip_length_type solve_result_min(void)
 {
-  return solve_result_min;
+  return solve_result_min_stored;
 }
-stip_length_type get_solve_result_max(void)
+stip_length_type solve_result_max(void)
 {
-  return solve_result_max;
+  return solve_result_max_stored;
 }
 void set_solve_result(stip_length_type const r)
 {
-  solve_result_min = r;
-  solve_result_max = r;
+  solve_result_min_stored = r;
+  solve_result_max_stored = r;
 }
 void set_solve_result_range(stip_length_type const min_result, stip_length_type const max_result)
 {
   assert(min_result <= max_result);
-  solve_result_min = min_result;
-  solve_result_max = max_result;
+  solve_result_min_stored = min_result;
+  solve_result_max_stored = max_result;
 }
 void set_solve_result_min(stip_length_type const min_result)
 {
-  solve_result_min = min_result;
-  if (solve_result_max < min_result)
-    solve_result_max = min_result;
+  solve_result_min_stored = min_result;
+  if (solve_result_max_stored < min_result)
+    solve_result_max_stored = min_result;
 }
 void set_solve_result_max(stip_length_type const max_result)
 {
-  solve_result_max = max_result;
-  if (solve_result_min > max_result)
-    solve_result_min = max_result;
+  solve_result_max_stored = max_result;
+  if (solve_result_min_stored > max_result)
+    solve_result_min_stored = max_result;
 }
 void increment_solve_result(void)
 {
-  ++solve_result_min;
-  ++solve_result_max;
+  ++solve_result_min_stored;
+  ++solve_result_max_stored;
 }
 void decrement_solve_result(void)
 {
-  --solve_result_min;
-  --solve_result_max;
+  --solve_result_min_stored;
+  --solve_result_max_stored;
 }
 
 /* Detect whether solve_result indicates that solving has succeeded
@@ -56,5 +56,5 @@ void decrement_solve_result(void)
  */
 boolean move_has_solved(void)
 {
-  return slack_length<=solve_result_min && solve_result_max<=MOVE_HAS_SOLVED_LENGTH();
+  return slack_length<=solve_result_min_stored && solve_result_max_stored<=MOVE_HAS_SOLVED_LENGTH();
 }

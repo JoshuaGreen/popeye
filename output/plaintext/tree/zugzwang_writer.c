@@ -48,7 +48,7 @@ void output_plaintext_tree_zugzwang_by_dummy_move_check_writer_solve(slice_index
 
   pipe_solve_delegate(si);
 
-  if (get_solve_result_max()==previous_move_is_illegal && get_solve_result_min()==previous_move_is_illegal)
+  if (solve_result_max()==previous_move_is_illegal && solve_result_min()==previous_move_is_illegal)
     /* the dummy move has effects that causes check to be delivered to the
      * defending side: no threat attempt can therefore be meaningfully played
      * -> signal Zugzwang
@@ -88,8 +88,8 @@ void output_plaintext_tree_zugzwang_writer_solve(slice_index si)
   /* We don't signal "Zugzwang" after the last attacking move of a
    * self play variation */
   if (solve_nr_remaining>=next_move_has_solution
-      && get_solve_result_min()==MOVE_HAS_NOT_SOLVED_LENGTH()
-      && get_solve_result_max()==MOVE_HAS_NOT_SOLVED_LENGTH())
+      && solve_result_min()==MOVE_HAS_NOT_SOLVED_LENGTH()
+      && solve_result_max()==MOVE_HAS_NOT_SOLVED_LENGTH())
     output_plaintext_message(Zugzwang);
 
   TraceFunctionExit(__func__);

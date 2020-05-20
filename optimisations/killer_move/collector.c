@@ -65,7 +65,7 @@ void killer_defense_collector_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (get_solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
+  if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
     remember_killer_move();
 
   TraceFunctionExit(__func__);

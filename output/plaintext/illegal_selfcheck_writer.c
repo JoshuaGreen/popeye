@@ -45,7 +45,7 @@ void illegal_selfcheck_writer_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (get_solve_result_max()==previous_move_is_illegal && get_solve_result_min()==previous_move_is_illegal)
+  if (solve_result_max()==previous_move_is_illegal && solve_result_min()==previous_move_is_illegal)
     output_plaintext_error_message(KingCapture);
 
   TraceFunctionExit(__func__);

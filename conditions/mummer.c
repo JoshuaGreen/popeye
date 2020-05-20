@@ -239,7 +239,7 @@ void mummer_bookkeeper_solve(slice_index si)
   {
     pipe_solve_delegate(si);
 
-    if (get_solve_result_min()>=slack_length)
+    if (solve_result_min()>=slack_length)
     {
       /* we have a new mum */
       mum_length[parent_ply[nbply]] = current_length;

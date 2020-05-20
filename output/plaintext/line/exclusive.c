@@ -59,8 +59,8 @@ void exclusive_chess_undecidable_writer_line_solve(slice_index si)
   {
     pipe_solve_delegate(si);
 
-    if (get_solve_result_max()==previous_move_has_solved
-        && get_solve_result_min()==previous_move_has_solved
+    if (solve_result_max()==previous_move_has_solved
+        && solve_result_min()==previous_move_has_solved
         && exclusive_chess_nr_continuations_reaching_goal[parent_ply[nbply]]<2
         && table_length(exclusive_chess_undecidable_continuations[parent_ply[nbply]])+exclusive_chess_nr_continuations_reaching_goal[parent_ply[nbply]]>1)
     {
