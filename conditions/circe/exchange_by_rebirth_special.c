@@ -48,7 +48,7 @@ void circe_exchange_special_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+  set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   {
     move_effect_journal_index_type const rebirth = circe_find_current_rebirth();

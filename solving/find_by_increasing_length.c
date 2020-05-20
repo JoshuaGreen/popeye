@@ -66,7 +66,7 @@ void find_by_increasing_length_solve(slice_index si)
 
   solve_nr_remaining = save_solve_nr_remaining;
 
-  solve_result = result_intermediate;
+  set_solve_result(result_intermediate);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

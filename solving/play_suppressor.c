@@ -40,7 +40,7 @@ void play_suppressor_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  solve_result = MOVE_HAS_SOLVED_LENGTH();
+  set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
 }

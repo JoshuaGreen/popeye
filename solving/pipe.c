@@ -18,7 +18,7 @@ void pipe_this_move_illegal_if(slice_index si, boolean condition)
   TraceFunctionParamListEnd();
 
   if (condition)
-    solve_result = this_move_is_illegal;
+    set_solve_result(this_move_is_illegal);
   else
     solve(SLICE_NEXT1(si));
 
@@ -38,7 +38,7 @@ void pipe_this_move_solves_if(slice_index si, boolean condition)
   TraceFunctionParamListEnd();
 
   if (condition)
-    solve_result = MOVE_HAS_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   else
     solve(SLICE_NEXT1(si));
 
@@ -58,7 +58,7 @@ void pipe_this_move_doesnt_solve_if(slice_index si, boolean condition)
   TraceFunctionParamListEnd();
 
   if (condition)
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else
     solve(SLICE_NEXT1(si));
 
@@ -75,7 +75,7 @@ void pipe_this_move_solves_exactly_if(boolean condition)
   TraceFunctionParam("%u",condition);
   TraceFunctionParamListEnd();
 
-  solve_result = condition ? MOVE_HAS_SOLVED_LENGTH() : MOVE_HAS_NOT_SOLVED_LENGTH();
+  set_solve_result(condition ? MOVE_HAS_SOLVED_LENGTH() : MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

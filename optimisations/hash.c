@@ -2310,7 +2310,7 @@ void attack_hashed_tester_solve(slice_index si)
 
   he = dhtLookupElement(pyhash,&hashBuffers[nbply]);
   if (he==dhtNilElement)
-    solve_result = delegate_can_attack_in_n(si,min_length_adjusted);
+    set_solve_result(delegate_can_attack_in_n(si,min_length_adjusted));
   else
   {
     hashElement_union_t const * const hue = (hashElement_union_t const *)he;
@@ -2321,13 +2321,13 @@ void attack_hashed_tester_solve(slice_index si)
     hash_value_type const val_nosuccess = get_value_attack_nosuccess(hue,base);
     stip_length_type const n_nosuccess = 2*val_nosuccess + min_length_adjusted-parity;
     if (n_nosuccess>=MOVE_HAS_SOLVED_LENGTH())
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
     else
     {
       hash_value_type const val_success = get_value_attack_success(hue,base);
       stip_length_type const n_success = 2*val_success + min_length_adjusted+2-parity;
       if (n_success<=MOVE_HAS_SOLVED_LENGTH())
-        solve_result = n_success;
+        set_solve_result(n_success);
       else
       {
         if (max_unsolvable<n_nosuccess)
@@ -2336,7 +2336,7 @@ void attack_hashed_tester_solve(slice_index si)
           TraceValue("->%u",max_unsolvable);
           TraceEOL();
         }
-        solve_result = delegate_can_attack_in_n(si,min_length_adjusted);
+        set_solve_result(delegate_can_attack_in_n(si,min_length_adjusted));
       }
     }
   }
@@ -2453,7 +2453,7 @@ void help_hashed_solve(slice_index si)
   if (is_table_uncompressed || solve_nr_remaining>next_move_has_solution)
   {
     if (inhash_help(si))
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
     else
     {
       if (SLICE_U(si).branch.min_length>slack_length+1)
@@ -2500,7 +2500,7 @@ void help_hashed_tester_solve(slice_index si)
   assert(solve_nr_remaining>=next_move_has_solution);
 
   if (inhash_help(base))
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else
   {
     if (SLICE_U(base).branch.min_length>slack_length+1)

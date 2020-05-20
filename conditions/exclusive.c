@@ -305,12 +305,12 @@ void exclusive_chess_legality_tester_solve(slice_index si)
       >1)
   {
     if (is_current_move_in_table(exclusive_chess_undecidable_continuations[parent_ply[nbply]]))
-      solve_result = this_move_is_illegal;
+      set_solve_result(this_move_is_illegal);
     else
       switch (conditional_pipe_solve_delegate(temporary_hack_mate_tester[advers(trait[nbply])]))
       {
         case this_move_is_illegal:
-          solve_result = this_move_is_illegal;
+          set_solve_result(this_move_is_illegal);
           break;
 
         case previous_move_has_not_solved:
@@ -318,7 +318,7 @@ void exclusive_chess_legality_tester_solve(slice_index si)
           break;
 
         default:
-          solve_result = previous_move_has_solved;
+          set_solve_result(previous_move_has_solved);
           break;
       }
   }
@@ -429,7 +429,7 @@ void exclusive_chess_nested_exclusivity_detector_solve(slice_index si)
   {
     TraceText("stopping recursion");
     remember_previous_move_as_undecidable();
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   }
   else
   {
@@ -495,7 +495,7 @@ void exclusive_chess_goal_reaching_move_counter_solve(slice_index si)
 
       if (exclusive_chess_nr_continuations_reaching_goal[parent_ply[nbply]]==1)
         /* look for one more */
-        solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+        set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
     }
     else if (solve_result==MOVE_HAS_NOT_SOLVED_LENGTH())
     {
@@ -508,7 +508,7 @@ void exclusive_chess_goal_reaching_move_counter_solve(slice_index si)
     }
   }
   else if (solve_result==MOVE_HAS_SOLVED_LENGTH())
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

@@ -154,7 +154,7 @@ void total_invisible_move_repeater_solve(slice_index si)
     undo_move_effects();
   }
   else
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
 
   finply();
 

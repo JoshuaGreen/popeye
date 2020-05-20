@@ -225,7 +225,7 @@ void intelligent_limit_nr_solutions_per_target_position_solve(slice_index si)
 
   if (SLICE_U(SLICE_NEXT2(si)).value_handler.value
       >=SLICE_U(problem_instrumenter).value_handler.value)
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else
     pipe_solve_delegate(si);
 

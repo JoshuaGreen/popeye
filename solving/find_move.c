@@ -57,7 +57,7 @@ void find_attack_solve(slice_index si)
       result_intermediate = solve_result;
   }
 
-  solve_result = result_intermediate;
+  set_solve_result(result_intermediate);
 
   if (encore())
     post_move_iteration_cancel();
@@ -142,7 +142,7 @@ void find_defense_solve(slice_index si)
       result_intermediate = solve_result;
   }
 
-  solve_result = result_intermediate;
+  set_solve_result(result_intermediate);
 
   if (encore())
     post_move_iteration_cancel();

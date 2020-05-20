@@ -62,7 +62,7 @@ void paralysing_stalemate_special_solve(slice_index si)
   /* only flag selfcheck if the side that has just moved is not the one to be
    * stalemated (i.e. if the stipulation is not auto-stalemate) */
   if (applies_to_who==goal_applies_to_starter && is_in_check(advers(starter)))
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   else
     pipe_this_move_solves_if(si,suffocated_by_paralysis(stalemated));
 

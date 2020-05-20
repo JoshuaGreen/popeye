@@ -87,7 +87,7 @@ void take_make_circe_collect_rebirth_squares_solve(slice_index si)
 
   if (CURRMOVE_OF_PLY(nbply)>MOVEBASE_OF_PLY(nbply))
   {
-    solve_result = MOVE_HAS_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_SOLVED_LENGTH());
 
     for (i = CURRMOVE_OF_PLY(nbply); i>MOVEBASE_OF_PLY(nbply); --i)
     {
@@ -96,7 +96,7 @@ void take_make_circe_collect_rebirth_squares_solve(slice_index si)
     }
   }
   else
-    solve_result = this_move_is_illegal;
+    set_solve_result(this_move_is_illegal);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
@@ -125,7 +125,7 @@ void take_make_circe_determine_rebirth_squares_solve(slice_index si)
 
   if (!post_move_am_i_iterating()
       && !init_rebirth_squares(context))
-    solve_result = this_move_is_illegal;
+    set_solve_result(this_move_is_illegal);
   else
   {
     context->rebirth_square = rebirth_square[take_make_circe_current_rebirth_square_index[stack_pointer]];

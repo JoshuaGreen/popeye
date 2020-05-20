@@ -29,7 +29,7 @@ void end_of_branch_solve(slice_index si)
   switch (conditional_pipe_solve_delegate(si))
   {
     case previous_move_has_solved:
-      solve_result = previous_move_has_solved;
+      set_solve_result(previous_move_has_solved);
       break;
 
     case previous_move_has_not_solved:
@@ -39,7 +39,7 @@ void end_of_branch_solve(slice_index si)
 
     default:
       assert(0);
-      solve_result = previous_move_is_illegal;
+      set_solve_result(previous_move_is_illegal);
       break;
   }
 

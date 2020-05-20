@@ -52,7 +52,7 @@ void maxtime_guard_solve(slice_index si)
 
   if (platform_has_maxtime_elapsed())
   {
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result_range(previous_move_is_illegal, MOVE_HAS_NOT_SOLVED_LENGTH());
     phase_solving_remember_incompleteness(si,solving_interrupted);
   }
   else

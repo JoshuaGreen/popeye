@@ -152,7 +152,7 @@ void for_each_attack_solve(slice_index si)
       result_intermediate = solve_result;
   }
 
-  solve_result = result_intermediate;
+  set_solve_result(result_intermediate);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
@@ -183,7 +183,7 @@ void for_each_defense_solve(slice_index si)
       result_intermediate = solve_result;
   }
 
-  solve_result = result_intermediate;
+  set_solve_result(result_intermediate);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

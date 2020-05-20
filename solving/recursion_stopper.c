@@ -57,7 +57,7 @@ void recursion_stopper_solve(slice_index si)
   if (nbply>stop_at_ply)
   {
     recursion_stopped = true;
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   }
   else
     pipe_solve_delegate(si);

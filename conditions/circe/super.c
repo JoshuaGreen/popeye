@@ -163,11 +163,11 @@ void supercirce_determine_rebirth_square_solve(slice_index si)
     if (advance_rebirth_square())
       post_move_iteration_solve_delegate(si);
     else
-      solve_result = this_move_is_illegal;
+      set_solve_result(this_move_is_illegal);
   }
   else if (post_move_have_i_lock() && !advance_rebirth_square())
   {
-    solve_result = this_move_is_illegal;
+    set_solve_result(this_move_is_illegal);
     post_move_iteration_end();
   }
   else
@@ -196,7 +196,7 @@ void supercirce_prevent_rebirth_on_non_empty_square_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  solve_result = this_move_is_illegal;
+  set_solve_result(this_move_is_illegal);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

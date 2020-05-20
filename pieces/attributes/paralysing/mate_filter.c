@@ -81,7 +81,7 @@ void paralysing_mate_filter_tester_solve(slice_index si)
   pipe_solve_delegate(si);
 
   if (move_has_solved() && suffocated_by_paralysis(mated))
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

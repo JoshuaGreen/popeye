@@ -92,7 +92,7 @@ static void try_next_breton_action(slice_index si)
       else
       {
         /* end the current iteration */
-        solve_result = this_move_is_illegal;
+        set_solve_result(this_move_is_illegal);
         post_move_iteration_end();
       }
     }

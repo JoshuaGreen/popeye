@@ -27,12 +27,12 @@ void goal_reached_tester_solve(slice_index si)
   switch (conditional_pipe_solve_delegate(si))
   {
     case previous_move_is_illegal:
-      solve_result = previous_move_is_illegal;
+      set_solve_result(previous_move_is_illegal);
       break;
 
     case previous_move_has_not_solved:
     case immobility_on_next_move:
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
       break;
 
     case previous_move_has_solved:
@@ -41,7 +41,7 @@ void goal_reached_tester_solve(slice_index si)
 
     default:
       assert(0);
-      solve_result = previous_move_is_illegal;
+      set_solve_result(previous_move_is_illegal);
       break;
   }
 

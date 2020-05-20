@@ -29,9 +29,9 @@ void not_solve(slice_index si)
   pipe_solve_delegate(si);
 
   if (solve_result>MOVE_HAS_SOLVED_LENGTH())
-    solve_result = MOVE_HAS_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   else if (solve_result>=previous_move_has_solved)
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

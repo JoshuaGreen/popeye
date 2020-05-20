@@ -2256,11 +2256,11 @@ void dispatch(slice_index si)
       break;
 
     case STTrue:
-      solve_result = previous_move_has_solved;
+      set_solve_result(previous_move_has_solved);
       break;
 
     case STFalse:
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
       break;
 
     /* move generators: */

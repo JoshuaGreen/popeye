@@ -85,7 +85,7 @@ void restart_guard_intelligent_solve(slice_index si)
   TraceFunctionParamListEnd();
 
   if (is_length_ruled_out_by_option_restart())
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else
   {
     nr_potential_target_positions = 0;

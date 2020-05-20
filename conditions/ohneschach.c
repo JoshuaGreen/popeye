@@ -234,11 +234,11 @@ void ohneschach_stop_if_check_and_not_mate_solve(slice_index si)
         TraceValue("%u",ohneschach_undecidable_goal_detected[nbply]);
         TraceEOL();
         recursion_stopped = false;
-        solve_result = MOVE_HAS_SOLVED_LENGTH();
+        set_solve_result(MOVE_HAS_SOLVED_LENGTH());
         break;
 
       case previous_move_has_not_solved:
-        solve_result = previous_move_is_illegal;
+        set_solve_result(previous_move_is_illegal);
         break;
 
       case previous_move_has_solved:
@@ -246,7 +246,7 @@ void ohneschach_stop_if_check_and_not_mate_solve(slice_index si)
         TraceValue("%u",nbply);
         TraceValue("%u",ohneschach_undecidable_goal_detected[nbply]);
         TraceEOL();
-        solve_result = MOVE_HAS_SOLVED_LENGTH();
+        set_solve_result(MOVE_HAS_SOLVED_LENGTH());
         break;
 
       case immobility_on_next_move:

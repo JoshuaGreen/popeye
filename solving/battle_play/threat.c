@@ -73,15 +73,15 @@ void threat_defeated_tester_solve(slice_index si)
            * threats yet -> don't stop the iteration over the
            * attacking moves
            */
-          solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+          set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
       }
       else if (solve_nr_remaining==threat_lengths[threats_ply]-1)
         /* we have found a defeated threat -> stop the iteration */
-        solve_result = MOVE_HAS_SOLVED_LENGTH();
+        set_solve_result(MOVE_HAS_SOLVED_LENGTH());
     }
     else
       /* not a threat -> don't stop the iteration */
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   }
 
   TraceFunctionExit(__func__);
@@ -209,7 +209,7 @@ void threat_enforcer_solve(slice_index si)
       pipe_solve_delegate(si);
     else
       /* variation is shorter than threat */
-      solve_result = len_test_threats;
+      set_solve_result(len_test_threats);
   }
   else
     /* zugzwang, or we haven't looked for threats yet */

@@ -59,7 +59,7 @@ void find_shortest_solve(slice_index si)
                                   : min_length);
   stip_length_type const save_solve_nr_remaining = solve_nr_remaining;
 
-  solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+  set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);

@@ -53,13 +53,14 @@ void exclusive_chess_undecidable_writer_line_solve(slice_index si)
     output_plaintext_line_write_line(goal_mate);
     protocol_fputc(' ',stdout);
     output_plaintext_message(ExclusiveRefutedUndecidable);
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   }
   else
   {
     pipe_solve_delegate(si);
 
-    if (solve_result==previous_move_has_solved
+    if (get_solve_result_max()==previous_move_has_solved
+        && get_solve_result_min()==previous_move_has_solved
         && exclusive_chess_nr_continuations_reaching_goal[parent_ply[nbply]]<2
         && table_length(exclusive_chess_undecidable_continuations[parent_ply[nbply]])+exclusive_chess_nr_continuations_reaching_goal[parent_ply[nbply]]>1)
     {

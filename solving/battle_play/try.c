@@ -171,7 +171,7 @@ void refutations_solver_solve(slice_index si)
   if (table_length(refutations)>0)
     fork_solve_delegate(si);
 
-  solve_result = variations_result;
+  set_solve_result(variations_result);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
@@ -225,7 +225,7 @@ void refutations_collector_solve(slice_index si)
   {
     append_to_table(refutations);
     if (table_length(refutations)<=max_nr_refutations)
-      solve_result = MOVE_HAS_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   }
 
   TraceFunctionExit(__func__);

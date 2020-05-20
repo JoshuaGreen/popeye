@@ -65,7 +65,7 @@ void opponent_moves_counter_solve(slice_index si)
 
   legal_move_count_fini();
 
-  solve_result = MOVE_HAS_SOLVED_LENGTH();
+  set_solve_result(MOVE_HAS_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

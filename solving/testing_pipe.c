@@ -34,7 +34,7 @@ stip_length_type testing_pipe_solve_delegate(slice_index si, stip_length_type n)
   result = solve_result;
 
   solve_nr_remaining = save_solve_nr_remaining;
-  solve_result = save_solve_result;
+  set_solve_result(save_solve_result);
 
   TraceFunctionExit(__func__);
   TraceFunctionResult("%u",result);

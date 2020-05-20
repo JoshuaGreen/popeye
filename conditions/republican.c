@@ -63,7 +63,7 @@ static boolean is_mate_square(Side other_side)
         result = true;
 
       solve_nr_remaining = save_solve_nr_remaining;
-      solve_result = save_solve_result;
+      set_solve_result(save_solve_result);
     }
 
     empty_square(being_solved.king_square[other_side]);

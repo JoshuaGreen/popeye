@@ -75,7 +75,7 @@ void non_king_move_generator_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  solve_result = immobility_on_next_move;
+  set_solve_result(immobility_on_next_move);
 
   nextply(SLICE_STARTER(si));
 

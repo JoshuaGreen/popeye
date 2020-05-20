@@ -71,7 +71,7 @@ void no_short_variations_solve(slice_index si)
   if (solve_nr_remaining>next_move_has_solution
       && encore() /* otherwise we are solving threats */
       && has_short_solution(si))
-    solve_result = MOVE_HAS_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   else
     pipe_solve_delegate(si);
 

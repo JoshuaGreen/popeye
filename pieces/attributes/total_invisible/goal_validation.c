@@ -107,7 +107,7 @@ static void attack_checks(void)
     if (k==0)
     {
       mate_validation_result = no_mate;
-      solve_result = previous_move_has_not_solved;
+      set_solve_result(previous_move_has_not_solved);
     }
     else if (k==UINT_MAX)
     {
@@ -180,7 +180,7 @@ void total_invisible_goal_guard_solve(slice_index si)
       mate_validation_result = no_mate;
     else if (make_a_flight())
     {
-      solve_result = previous_move_has_not_solved;
+      set_solve_result(previous_move_has_not_solved);
       mate_validation_result = no_mate;
     }
     else

@@ -40,7 +40,7 @@ void circe_assassin_assassinate_solve(slice_index si)
   TraceFunctionParamListEnd();
 
   if (TSTFULLFLAGMASK(being_solved.spec[sq_rebirth],mask))
-    solve_result = this_move_is_illegal;
+    set_solve_result(this_move_is_illegal);
   else
   {
     move_effect_journal_do_piece_removal(move_effect_reason_assassin_circe_rebirth,

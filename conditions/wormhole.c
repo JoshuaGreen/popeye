@@ -159,7 +159,7 @@ void wormhole_transferer_solve(slice_index si)
       advance_wormhole(sq_departure,sq_arrival);
 
       if (wormhole_next_transfer[nbply]==nr_wormholes+1)
-        solve_result = this_move_is_illegal;
+        set_solve_result(this_move_is_illegal);
       else
         transfer_and_solve(si,sq_departure,sq_arrival);
     }

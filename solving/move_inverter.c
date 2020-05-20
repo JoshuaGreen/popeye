@@ -32,21 +32,21 @@ void move_inverter_solve(slice_index si)
   switch (solve_result)
   {
     case previous_move_is_illegal:
-      solve_result = immobility_on_next_move;
+      set_solve_result(immobility_on_next_move);
       break;
 
     case immobility_on_next_move:
     case previous_move_has_not_solved:
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
       break;
 
     case previous_move_has_solved:
-      solve_result = MOVE_HAS_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_SOLVED_LENGTH());
       break;
 
     default:
       assert(0);
-      solve_result = immobility_on_next_move;
+      set_solve_result(immobility_on_next_move);
       break;
   }
 

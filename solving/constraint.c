@@ -33,16 +33,16 @@ void constraint_solve(slice_index si)
 
     case immobility_on_next_move:
     case previous_move_has_not_solved:
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
       break;
 
     case previous_move_is_illegal:
-      solve_result = previous_move_is_illegal;
+      set_solve_result(previous_move_is_illegal);
       break;
 
     default:
       assert(0);
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
       break;
   }
 

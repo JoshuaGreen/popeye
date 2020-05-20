@@ -115,7 +115,7 @@ void total_invisible_special_moves_player_solve(slice_index si)
       if (nr_total_invisbles_consumed()<=total_invisible_number)
         pipe_solve_delegate(si);
       else
-        solve_result = this_move_is_illegal;
+        set_solve_result(this_move_is_illegal);
       static_consumption.move_after_victing[side] = save_move_after_victim;
     }
     else if (sq_departure==capture_by_invisible)
@@ -142,7 +142,7 @@ void total_invisible_special_moves_player_solve(slice_index si)
         pipe_solve_delegate(si);
       }
       else
-        solve_result = this_move_is_illegal;
+        set_solve_result(this_move_is_illegal);
 
       static_consumption.move_after_victing[side] = save_move_after_victim;
 
@@ -215,7 +215,7 @@ void total_invisible_special_moves_player_solve(slice_index si)
             if (nr_total_invisbles_consumed()<=total_invisible_number)
               pipe_solve_delegate(si);
             else
-              solve_result = this_move_is_illegal;
+              set_solve_result(this_move_is_illegal);
 
             static_consumption.move_after_victing[side_victim] = save_move_after_victim;
             --static_consumption.pawn_victims[side_victim];

@@ -214,7 +214,7 @@ void total_invisible_uninterceptable_selfcheck_guard_solve(slice_index si)
 
   if (being_solved.king_square[trait[nbply]]!=initsquare
       && is_square_uninterceptably_attacked(trait[nbply],being_solved.king_square[trait[nbply]]))
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   else if (nbply>ply_retro_move)
   {
     remember_taboos_for_current_move();

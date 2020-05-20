@@ -73,7 +73,7 @@ void patience_chess_legality_tester_solve(slice_index si)
   if (PatienceB || patience_legal())
     pipe_solve_delegate(si);
   else
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

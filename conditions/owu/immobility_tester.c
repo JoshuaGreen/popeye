@@ -125,9 +125,9 @@ void owu_immobility_tester_king_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  solve_result = (legal_move_counter_count[nbply]==0 && capture_counter_count==1
-                  ? previous_move_has_solved
-                  : previous_move_has_not_solved);
+  set_solve_result((legal_move_counter_count[nbply]==0 && capture_counter_count==1
+                    ? previous_move_has_solved
+                    : previous_move_has_not_solved));
 
   /* clean up after ourselves */
   capture_counter_count = 0;

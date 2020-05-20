@@ -183,7 +183,7 @@ void max_nr_nontrivial_guard_solve(slice_index si)
       --max_nr_nontrivial;
     }
     else
-      solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   }
   else
     pipe_solve_delegate(si);
@@ -237,7 +237,7 @@ void max_nr_nontrivial_counter_solve(slice_index si)
     if (non_trivial_count[nbply]<=max_nr_nontrivial+1)
       /* found enough non-trivial defenses - stop the iteration
        */
-      solve_result = MOVE_HAS_SOLVED_LENGTH();
+      set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   }
 
   TraceFunctionExit(__func__);

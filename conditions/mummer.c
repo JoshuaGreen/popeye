@@ -239,7 +239,7 @@ void mummer_bookkeeper_solve(slice_index si)
   {
     pipe_solve_delegate(si);
 
-    if (solve_result>=slack_length)
+    if (get_solve_result_min()>=slack_length)
     {
       /* we have a new mum */
       mum_length[parent_ply[nbply]] = current_length;
@@ -254,7 +254,7 @@ void mummer_bookkeeper_solve(slice_index si)
     }
   }
 
-  solve_result = this_move_is_illegal;
+  set_solve_result(this_move_is_illegal);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
@@ -529,7 +529,7 @@ void ultra_mummer_measurer_deadend_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  solve_result = MOVE_HAS_SOLVED_LENGTH();
+  set_solve_result(MOVE_HAS_SOLVED_LENGTH());
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
 }

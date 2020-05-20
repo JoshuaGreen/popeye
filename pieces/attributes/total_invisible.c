@@ -652,7 +652,7 @@ void total_invisible_move_sequence_tester_solve(slice_index si)
   /* necessary for detecting checks by pawns and leapers */
   if (being_solved.king_square[trait[nbply]]!=initsquare
       && is_square_uninterceptably_attacked(trait[nbply],being_solved.king_square[trait[nbply]]))
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   else
   {
     /* make sure that our length corresponds to the length of the tested move sequence
@@ -685,7 +685,7 @@ void total_invisible_move_sequence_tester_solve(slice_index si)
     unrewind_effects();
     play_phase = play_regular;
 
-    solve_result = get_decision_result();
+    set_solve_result(get_decision_result());
   }
 
   forget_taboos_for_current_move();

@@ -107,11 +107,11 @@ void paralysing_suffocation_finder_solve(slice_index si)
     }
 
   if (found_move_from_unparalysed)
-    solve_result = next_move_has_no_solution;
+    set_solve_result(next_move_has_no_solution);
   else if (found_move_from_paralysed)
-    solve_result = next_move_has_solution;
+    set_solve_result(next_move_has_solution);
   else
-    solve_result = next_move_has_no_solution;
+    set_solve_result(next_move_has_no_solution);
 
   paralysis_suspended = true;
 

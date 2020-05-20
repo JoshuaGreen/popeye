@@ -50,7 +50,7 @@ void stoponshortsolutions_solve(slice_index si)
   TraceFunctionParamListEnd();
 
   if (has_short_solution_been_found_in_phase(initialiser))
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else
   {
     pipe_solve_delegate(si);

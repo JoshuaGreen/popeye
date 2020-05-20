@@ -116,9 +116,9 @@ void maff_immobility_tester_king_solve(slice_index si)
   pipe_solve_delegate(si);
 
   /* apply the MAFF rule */
-  solve_result = (legal_move_counter_count[nbply]==1
-                  ? previous_move_has_solved
-                  : next_move_has_no_solution);
+  set_solve_result((legal_move_counter_count[nbply]==1
+                    ? previous_move_has_solved
+                    : next_move_has_no_solution));
 
   legal_move_count_fini();
 

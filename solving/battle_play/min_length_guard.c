@@ -64,7 +64,7 @@ void min_length_guard_solve(slice_index si)
   if (solve_result>previous_move_is_illegal
       && solve_nr_remaining+min_length>length+solve_result)
     /* the defender has refuted by reaching the goal too early */
-    solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

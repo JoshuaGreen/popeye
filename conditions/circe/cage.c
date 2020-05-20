@@ -191,7 +191,7 @@ void circe_cage_cage_tester_solve(slice_index si)
     if (rebirth<move_effect_journal_base[nbply]+move_effect_journal_index_offset_other_effects)
       pipe_dispatch_delegate(si);
     else if (find_non_capturing_move(rebirth,advers(SLICE_STARTER(si))))
-      solve_result = this_move_is_illegal;
+      set_solve_result(this_move_is_illegal);
     else
     {
       cage_search_status[nbply] = cage_found;

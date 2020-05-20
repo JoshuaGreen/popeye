@@ -87,7 +87,7 @@ void oscillating_kings_type_b_solve(slice_index si)
   update_king_squares();
 
   if (is_in_check(starter))
-    solve_result = this_move_is_illegal;
+    set_solve_result(this_move_is_illegal);
   else
   {
     perform_oscillation();

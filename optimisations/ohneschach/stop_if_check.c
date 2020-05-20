@@ -142,7 +142,7 @@ void ohneschach_stop_if_check_solve(slice_index si)
   TraceFunctionParamListEnd();
 
   if (is_in_check(SLICE_STARTER(si)))
-    solve_result = previous_move_is_illegal;
+    set_solve_result(previous_move_is_illegal);
   else
     pipe_solve_delegate(si);
 

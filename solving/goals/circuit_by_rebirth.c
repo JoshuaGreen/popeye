@@ -29,7 +29,7 @@ void goal_circuit_by_rebirth_reached_tester_solve(slice_index si)
   assert(CURRMOVE_OF_PLY(nbply)!=nil_coup);
 
   /* goal is only reachable in some fairy conditions */
-  solve_result = MOVE_HAS_NOT_SOLVED_LENGTH();
+  set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

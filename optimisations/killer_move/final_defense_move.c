@@ -141,7 +141,7 @@ static void defend_with_killer_piece(slice_index si)
     fork_solve_delegate(si);
   }
   else
-    solve_result = immobility_on_next_move;
+    set_solve_result(immobility_on_next_move);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
@@ -180,7 +180,7 @@ void killer_move_final_defense_move_solve(slice_index si)
       result_intermediate = result_non_killers;
   }
 
-  solve_result = result_intermediate;
+  set_solve_result(result_intermediate);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
