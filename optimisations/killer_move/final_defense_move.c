@@ -180,7 +180,7 @@ void killer_move_final_defense_move_solve(slice_index si)
   result_intermediate_min = solve_result_min();
   result_intermediate_max = solve_result_max();
 
-  if (result_intermediate<=next_move_has_solution)
+  if (result_intermediate_min<=next_move_has_solution)
   {
     defend_with_non_killer_pieces(si);
     stip_length_type solve_result_m = solve_result_min();

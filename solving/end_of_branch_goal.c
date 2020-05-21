@@ -26,7 +26,7 @@ void end_of_branch_goal_solve(slice_index si)
 
   fork_solve_delegate(si);
 
-  if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
+  if (solve_result_max()>MOVE_HAS_SOLVED_LENGTH())
     pipe_solve_delegate(si);
 
   TraceFunctionExit(__func__);

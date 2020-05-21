@@ -58,24 +58,31 @@ void find_shortest_solve(slice_index si)
                                   ? min_length-(length-solve_nr_remaining)
                                   : min_length);
   stip_length_type const save_solve_nr_remaining = solve_nr_remaining;
-
+  
   set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
+  stip_length_type result_min = solve_result_min();
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
   assert(length>=solve_nr_remaining);
+  
 
   for (solve_nr_remaining = n_min+(save_solve_nr_remaining-n_min)%2;
        solve_nr_remaining<=save_solve_nr_remaining;
        solve_nr_remaining += 2)
   {
     pipe_solve_delegate(si);
+    stip_length_type const solve_min = solve_result_min();
+    if (solve_min<=MOVE_HAS_SOLVED_LENGTH())
+      if (solve_min<result_m)
+        result_m = solve_min;
     if (solve_result_max()<=MOVE_HAS_SOLVED_LENGTH())
       break;
   }
 
+  set_solve_result_min(result_min);
   solve_nr_remaining = save_solve_nr_remaining;
 
   TraceFunctionExit(__func__);
