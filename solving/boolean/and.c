@@ -29,8 +29,8 @@ void and_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (previous_move_is_illegal<solve_result
-      && solve_result<=MOVE_HAS_SOLVED_LENGTH())
+  if (previous_move_is_illegal<solve_result_max()
+      && solve_result_min()<=MOVE_HAS_SOLVED_LENGTH())
     fork_solve_delegate(si);
 
   TraceFunctionExit(__func__);

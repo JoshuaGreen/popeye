@@ -484,7 +484,7 @@ void exclusive_chess_goal_reaching_move_counter_solve(slice_index si)
 
   if (table_length(exclusive_chess_undecidable_continuations[parent_ply[nbply]])==nr_undecidable_before)
   {
-    if (solve_result==MOVE_HAS_SOLVED_LENGTH())
+    if (solve_result_must_equal(MOVE_HAS_SOLVED_LENGTH()))
     {
       ++exclusive_chess_nr_continuations_reaching_goal[parent_ply[nbply]];
 
@@ -497,7 +497,7 @@ void exclusive_chess_goal_reaching_move_counter_solve(slice_index si)
         /* look for one more */
         set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
     }
-    else if (solve_result==MOVE_HAS_NOT_SOLVED_LENGTH())
+    else if (solve_result_must_equal(MOVE_HAS_NOT_SOLVED_LENGTH()))
     {
       ++nr_decidable_continuations_not_reaching_goal[parent_ply[nbply]];
       TraceText("remembering defined continuation");
@@ -507,7 +507,7 @@ void exclusive_chess_goal_reaching_move_counter_solve(slice_index si)
       TraceEOL();
     }
   }
-  else if (solve_result==MOVE_HAS_SOLVED_LENGTH())
+  else if (solve_result_must_equal(MOVE_HAS_SOLVED_LENGTH()))
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);

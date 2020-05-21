@@ -54,7 +54,7 @@ void stoponshortsolutions_solve(slice_index si)
   else
   {
     pipe_solve_delegate(si);
-    if (solve_result<=MOVE_HAS_SOLVED_LENGTH()
+    if (solve_result_max()<=MOVE_HAS_SOLVED_LENGTH()
         && solve_nr_remaining<SLICE_U(si).branch.length)
       short_solution_found(initialiser);
   }

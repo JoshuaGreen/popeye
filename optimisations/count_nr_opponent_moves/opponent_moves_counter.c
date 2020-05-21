@@ -54,7 +54,7 @@ void opponent_moves_counter_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (solve_result==this_move_is_illegal)
+  if (solve_result_must_equal(this_move_is_illegal))
     /* Defenses leading to self check get a big count.
      * But still make sure that we can correctly compute the difference of two
      * counts.

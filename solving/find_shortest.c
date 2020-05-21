@@ -72,7 +72,7 @@ void find_shortest_solve(slice_index si)
        solve_nr_remaining += 2)
   {
     pipe_solve_delegate(si);
-    if (solve_result<=MOVE_HAS_SOLVED_LENGTH())
+    if (solve_result_max()<=MOVE_HAS_SOLVED_LENGTH())
       break;
   }
 

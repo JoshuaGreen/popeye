@@ -29,7 +29,7 @@ void if_then_else_solve(slice_index si)
   solve(SLICE_U(si).if_then_else.condition);
   solve_nr_remaining = save_solve_nr_remaining;
 
-  binary_solve_if_then_else(si,solve_result==previous_move_has_solved);
+  binary_solve_if_then_else(si,solve_result_must_equal(previous_move_has_solved));
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

@@ -91,12 +91,13 @@ void killer_move_optimise_final_defense_move(slice_index si,
  *            <=n length of shortest solution found
  *            n+2 no solution found
  */
-static stip_length_type defend_with_non_killer_pieces(slice_index si)
+static void defend_with_non_killer_pieces(slice_index si)
 {
   Side const defender = SLICE_STARTER(si);
   square const killer_pos = killer_moves[nbply+1].departure;
   square const *bnp;
-  stip_length_type result = immobility_on_next_move;
+  stip_length_type result_min = immobility_on_next_move;
+  stip_length_type result_max = immobility_on_next_move;
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
@@ -108,14 +109,18 @@ static stip_length_type defend_with_non_killer_pieces(slice_index si)
     {
       init_single_piece_move_generator(*bnp);
       pipe_solve_delegate(si);
-      if (solve_result>result)
-        result = solve_result;
+      stip_length_type solve_result_m = solve_result_min();
+      if (solve_result_m>result_min)
+        result_min = solve_result_m;
+      solve_result_m = solve_result_max();
+      if (solve_result_m>result_max)
+        result_max = solve_result_m;
     }
+  
+  set_solve_result_range(result_min, result_max);
 
   TraceFunctionExit(__func__);
-  TraceFunctionResult("%u",result);
   TraceFunctionResultEnd();
-  return result;
 }
 
 /* Try defenses first by the killer piece, then by the other pieces
@@ -162,7 +167,8 @@ static void defend_with_killer_piece(slice_index si)
  */
 void killer_move_final_defense_move_solve(slice_index si)
 {
-  stip_length_type result_intermediate;
+  stip_length_type result_intermediate_min;
+  stip_length_type result_intermediate_max;
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
@@ -171,16 +177,21 @@ void killer_move_final_defense_move_solve(slice_index si)
   assert(solve_nr_remaining==next_move_has_solution);
 
   defend_with_killer_piece(si);
-  result_intermediate = solve_result;
+  result_intermediate_min = solve_result_min();
+  result_intermediate_max = solve_result_max();
 
   if (result_intermediate<=next_move_has_solution)
   {
-    stip_length_type const result_non_killers = defend_with_non_killer_pieces(si);
-    if (result_non_killers>result_intermediate)
-      result_intermediate = result_non_killers;
+    defend_with_non_killer_pieces(si);
+    stip_length_type solve_result_m = solve_result_min();
+    if (solve_result_m>result_intermediate_min)
+      result_intermediate_min = solve_result_m;
+    solve_result_m = solve_result_max();
+    if (solve_result_m>result_intermediate_max)
+      result_intermediate_max = solve_result_m;
   }
 
-  set_solve_result(result_intermediate);
+  set_solve_result_range(result_intermediate_min, result_intermediate_max);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();

@@ -51,16 +51,17 @@ void continuation_solver_solve(slice_index si)
   if (move_has_solved())
   {
 #if !defined(NDEBUG)
-    stip_length_type const test_result = solve_result;
+    stip_length_type const test_result_min = solve_result_min();
 #endif
+    stip_length_type const test_result_max = solve_result_max();
     stip_length_type const save_solve_nr_remaining = solve_nr_remaining;
 
-    if (solve_nr_remaining>solve_result)
-      solve_nr_remaining = solve_result;
+    if (solve_nr_remaining>test_result_max)
+      solve_nr_remaining = test_result_max;
     pipe_solve_delegate(si);
-    solve_nr_remaining = save_solve_nr_remaining;
 
-    assert(solve_result==test_result);
+    assert(solve_result_min()<=test_result_max || solve_result_max()>=test_result_min);
+    solve_nr_remaining = save_solve_nr_remaining;
   }
 
   TraceFunctionExit(__func__);

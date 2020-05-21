@@ -159,19 +159,21 @@ static slice_index alloc_refutations_solver(void)
  */
 void refutations_solver_solve(slice_index si)
 {
-  stip_length_type variations_result;
+  stip_length_type variations_result_min;
+  stip_length_type variations_result_max;
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
   pipe_solve_delegate(si);
-  variations_result = solve_result;
+  variations_result_min = solve_result_min();
+  variations_result_max = solve_result_max();
 
   if (table_length(refutations)>0)
     fork_solve_delegate(si);
 
-  set_solve_result(variations_result);
+  set_solve_result_range(variations_result_min, variations_result_max);
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
@@ -221,7 +223,7 @@ void refutations_collector_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (solve_result>MOVE_HAS_SOLVED_LENGTH())
+  if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
   {
     append_to_table(refutations);
     if (table_length(refutations)<=max_nr_refutations)

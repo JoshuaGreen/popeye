@@ -231,7 +231,7 @@ void max_nr_nontrivial_counter_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (solve_result>MOVE_HAS_SOLVED_LENGTH())
+  if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
   {
     ++non_trivial_count[nbply];
     if (non_trivial_count[nbply]<=max_nr_nontrivial+1)

@@ -43,21 +43,29 @@ slice_index alloc_find_attack_slice(void)
  */
 void find_attack_solve(slice_index si)
 {
-  stip_length_type result_intermediate = MOVE_HAS_NOT_SOLVED_LENGTH();
+  stip_length_type result_intermediate_min = MOVE_HAS_NOT_SOLVED_LENGTH();
+  stip_length_type result_intermediate_max = MOVE_HAS_NOT_SOLVED_LENGTH();
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  while (encore() && result_intermediate>MOVE_HAS_SOLVED_LENGTH())
+  while (encore() && result_intermediate_max>MOVE_HAS_SOLVED_LENGTH())
   {
     pipe_solve_delegate(si);
-    assert(slack_length<=solve_result || solve_result<=immobility_on_next_move);
-    if (slack_length<solve_result && solve_result<result_intermediate)
-      result_intermediate = solve_result;
+    stip_length_type const solve_result_minimum = solve_result_min();
+    stip_length_type const solve_result_maximum = solve_result_min();
+    assert(slack_length<=solve_result_maximum || solve_result_minimum<=immobility_on_next_move);
+    if (slack_length<solve_result_minimum)
+    {
+      if (solve_result_minimum<result_intermediate_min)
+        result_intermediate_min = solve_result_minimum;
+      if (solve_result_maximum<result_intermediate_max)
+        result_intermediate_max = solve_result_maximum;
+    }
   }
 
-  set_solve_result(result_intermediate);
+  set_solve_result_range(result_intermediate_min, result_intermediate_max);
 
   if (encore())
     post_move_iteration_cancel();
@@ -128,21 +136,27 @@ slice_index alloc_find_defense_slice(void)
  */
 void find_defense_solve(slice_index si)
 {
-  stip_length_type result_intermediate = immobility_on_next_move;
+  stip_length_type result_intermediate_min = immobility_on_next_move;
+  stip_length_type result_intermediate_max = immobility_on_next_move;
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  while (result_intermediate<=MOVE_HAS_SOLVED_LENGTH() && encore())
+  while (result_intermediate_min<=MOVE_HAS_SOLVED_LENGTH() && encore())
   {
     pipe_solve_delegate(si);
-    assert(slack_length<=solve_result || solve_result==this_move_is_illegal);
-    if (result_intermediate<solve_result)
-      result_intermediate = solve_result;
+
+    stip_length_type solve_result_m = solve_result_max();
+    assert(slack_length<=solve_result_m || solve_result_might_be(this_move_is_illegal));
+    if (result_intermediate_max<solve_result_m)
+      result_intermediate_max = solve_result_m;
+    solve_result_m = solve_result_min();
+    if (result_intermediate_min<solve_result_m)
+      result_intermediate_min = solve_result_m;
   }
 
-  set_solve_result(result_intermediate);
+  set_solve_result_range(result_intermediate_min, result_intermediate_max);
 
   if (encore())
     post_move_iteration_cancel();

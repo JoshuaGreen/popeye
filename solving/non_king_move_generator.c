@@ -79,7 +79,7 @@ void non_king_move_generator_solve(slice_index si)
 
   nextply(SLICE_STARTER(si));
 
-  while (solve_result<slack_length
+  while (solve_result_min()<slack_length
          && advance_departure_square(&next_square_to_try))
     pipe_solve_delegate(si);
 

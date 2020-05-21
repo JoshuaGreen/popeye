@@ -64,8 +64,8 @@ static slice_index alloc_degenerate_tree_guard_slice(stip_length_type length,
  *            n+2 no solution found
  */
 static stip_length_type delegate_solve(slice_index si,
-                                        stip_length_type n,
-                                        stip_length_type n_min)
+                                       stip_length_type n,
+                                       stip_length_type n_min)
 {
   stip_length_type result = n+2;
   stip_length_type const save_solve_nr_remaining = MOVE_HAS_SOLVED_LENGTH();
@@ -79,7 +79,7 @@ static stip_length_type delegate_solve(slice_index si,
   {
     pipe_solve_delegate(si);
 
-  result = solve_result;
+    result = solve_result;
     if (result<=MOVE_HAS_SOLVED_LENGTH())
       break;
   }

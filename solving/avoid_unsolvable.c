@@ -281,7 +281,7 @@ void learn_unsolvable_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (solve_result>MOVE_HAS_SOLVED_LENGTH())
+  if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
   {
     max_unsolvable = MOVE_HAS_SOLVED_LENGTH();
     TraceValue("->%u",max_unsolvable);

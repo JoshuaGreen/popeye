@@ -29,7 +29,7 @@ void attack_played_solve(slice_index si)
   pipe_solve_delegate(si);
   ++solve_nr_remaining;
 
-  if (solve_result==immobility_on_next_move) /* oops - unintentional stalemate! */
+  if (solve_result_must_equal(immobility_on_next_move)) /* oops - unintentional stalemate! */
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else
     increment_solve_result();
@@ -90,7 +90,7 @@ void help_move_played_solve(slice_index si)
   pipe_solve_delegate(si);
   ++solve_nr_remaining;
 
-  if (solve_result>=previous_move_has_solved)
+  if (solve_result_min()>=previous_move_has_solved)
     increment_solve_result();
 
   TraceFunctionExit(__func__);

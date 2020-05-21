@@ -60,7 +60,7 @@ static boolean is_mate_square(Side other_side)
       solve_nr_remaining = length_unspecified;
 
       post_move_iteration_solve_fork(temporary_hack_mate_tester[other_side]);
-      if (solve_result==previous_move_has_solved)
+      if (solve_result_must_equal(previous_move_has_solved))
         result = true;
 
       solve_nr_remaining = save_solve_nr_remaining;
