@@ -100,8 +100,12 @@ void help_move_played_solve(slice_index si)
 
   if (solve_result_min()>=previous_move_has_solved)
     increment_solve_result();
-  else if (solve_result_max()>=previous_move_has_solved)
-    set_solve_result_max(solve_result_max() + 1);
+  else
+  {
+    stip_length_type const solve_result_m = solve_result_max();
+    if (solve_result_m>=previous_move_has_solved)
+      set_solve_result_max(solve_result_m + 1);
+  }
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
