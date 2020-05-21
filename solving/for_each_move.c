@@ -149,14 +149,17 @@ void for_each_attack_solve(slice_index si)
   while (encore())
   {
     pipe_solve_delegate(si);
-    stip_length_type solve_result_m = solve_result_min();
-    if (slack_length<solve_result_m)
+    stip_length_type const max_value = solve_result_max();
+    if (slack_length<max_value)
     {
-      if (solve_result_m<result_intermediate_min)
-        result_intermediate_min = solve_result_m;
-      solve_result_m = solve_result_max();
-      if (solve_result_m<result_intermediate_max)
-        result_intermediate_max = solve_result_m;
+      stip_length_type min_value = solve_result_min();
+      if (slack_length<min_value)
+        if (max_value<result_intermediate_max)
+          result_intermediate_max = max_value;
+      else
+        min_value = slack_length + 1;
+      if (min_value<result_intermediate_min)
+        result_intermediate_min = min_value;
     }
   }
 
