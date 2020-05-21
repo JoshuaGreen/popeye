@@ -513,6 +513,8 @@ void exclusive_chess_goal_reaching_move_counter_solve(slice_index si)
       else if (solve_result_max() < MOVE_HAS_NOT_SOLVED_LENGTH())
         set_solve_result_max(MOVE_HAS_NOT_SOLVED_LENGTH());    
   }
+  else if (solve_result_must_equal(MOVE_HAS_SOLVED_LENGTH()))
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   else if (solve_result_might_equal(MOVE_HAS_SOLVED_LENGTH()))
     if (solve_result_min() > MOVE_HAS_NOT_SOLVED_LENGTH())
       set_solve_result_min(MOVE_HAS_NOT_SOLVED_LENGTH());
