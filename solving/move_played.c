@@ -36,10 +36,7 @@ void attack_played_solve(slice_index si)
     const boolean possible_stalemate = solve_result_might_equal(immobility_on_next_move);
     increment_solve_result();
     if (possible_stalemate)
-      if (solve_result_min()>MOVE_HAS_NOT_SOLVED_LENGTH())
-        set_solve_result_min(MOVE_HAS_NOT_SOLVED_LENGTH());
-      else if (solve_result_max()<MOVE_HAS_NOT_SOLVED_LENGTH())
-        set_solve_result_max(MOVE_HAS_NOT_SOLVED_LENGTH());
+      add_solve_result_possibility(MOVE_HAS_NOT_SOLVED_LENGTH());
   }
 
   TraceFunctionExit(__func__);
