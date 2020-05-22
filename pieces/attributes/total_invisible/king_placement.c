@@ -68,7 +68,7 @@ static void done_validating_king_placements(void)
         replay_fleshed_out_move_sequence(play_replay_testing);
         play_phase = play_testing_mate;
 
-        record_decision_result(solve_result);
+        record_decision_result(solve_result_max());
       }
 
       break;

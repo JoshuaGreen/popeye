@@ -17,9 +17,9 @@
  *            n+2 no solution found in this branch
  *            n+3 no solution found in next branch
  */
-stip_length_type testing_pipe_solve_delegate(slice_index si, stip_length_type n)
+testing_pipe_solve_delegate_return_type testing_pipe_solve_delegate(slice_index si, stip_length_type n)
 {
-  stip_length_type result;
+  testing_pipe_solve_delegate_return_type result;
   stip_length_type const save_solve_nr_remaining = solve_nr_remaining;
   stip_length_type const save_solve_result_min = solve_result_min();
   stip_length_type const save_solve_result_max = solve_result_max();
@@ -32,7 +32,8 @@ stip_length_type testing_pipe_solve_delegate(slice_index si, stip_length_type n)
   solve_nr_remaining = n;
 
   fork_solve_delegate(si);
-  result = solve_result;
+  result.solve_min = solve_result_min();
+  result.solve_max = solve_result_max();
 
   solve_nr_remaining = save_solve_nr_remaining;
   set_solve_result_range(save_solve_result_min, save_solve_result_max);

@@ -24,6 +24,12 @@
  *            n+2 no solution found in this branch
  *            n+3 no solution found in next branch
  */
-stip_length_type testing_pipe_solve_delegate(slice_index si, stip_length_type n);
+ 
+typedef struct {
+  stip_length_type solve_min;
+  stip_length_type solve_max;
+} testing_pipe_solve_delegate_return_type;
+
+testing_pipe_solve_delegate_return_type testing_pipe_solve_delegate(slice_index si, stip_length_type n);
 
 #endif

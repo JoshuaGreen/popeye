@@ -141,7 +141,7 @@ void threat_solver_solve(slice_index si)
   {
     /* solve threats, fill threats[nbply] */
     fork_solve_delegate(si);
-    threat_lengths[nbply] = solve_result-1;
+    threat_lengths[nbply] = solve_result_max()-1;
   }
 
   /* solve variations, filter out irrelevant ones using threats[nbply] */
@@ -191,7 +191,7 @@ void threat_enforcer_solve(slice_index si)
      * the threats or variations that don't refute any threat
      */
     table const threats_table = threats[threats_ply];
-    stip_length_type len_test_threats;
+    testing_pipe_solve_delegate_return_type len_test_threats;
 
     nr_threats_to_be_confirmed = table_length(threats_table);
     TraceValue("%u",nr_threats_to_be_confirmed);TraceEOL();
@@ -199,17 +199,17 @@ void threat_enforcer_solve(slice_index si)
     len_test_threats = testing_pipe_solve_delegate(si,len_threat);
     TraceValue("%u",nr_threats_to_be_confirmed);TraceEOL();
 
-    if (len_test_threats>len_threat)
+    if (len_test_threats.solve_min>len_threat)
       /* variation is longer than threat */
       pipe_solve_delegate(si);
-    else if (len_test_threats>len_threat-2 && nr_threats_to_be_confirmed>0)
+    else if (len_test_threats.solve_min>len_threat-2 && nr_threats_to_be_confirmed>0)
       /* variation has same length as the threat(s), but it has
        * defeated at least one threat
        */
       pipe_solve_delegate(si);
     else
       /* variation is shorter than threat */
-      set_solve_result(len_test_threats);
+      set_solve_result_range(len_test_threats.solve_min, len_test_threats.solve_max);
   }
   else
     /* zugzwang, or we haven't looked for threats yet */

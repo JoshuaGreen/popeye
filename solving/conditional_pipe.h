@@ -17,6 +17,7 @@
  *        previous_move_is_illegal
  *        immobility_on_next_move
  */
+
 stip_length_type conditional_pipe_solve_delegate(slice_index si);
 
 #endif

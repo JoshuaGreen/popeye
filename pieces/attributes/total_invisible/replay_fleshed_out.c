@@ -206,8 +206,8 @@ boolean replay_fleshed_out_move_sequence(play_phase_type phase_replay)
 
     pipe_solve_delegate(tester_slice);
 
-    assert(solve_result<=previous_move_has_not_solved);
-    record_decision_result(solve_result);
+    assert(solve_result_min()<=previous_move_has_not_solved);
+    record_decision_result(solve_result_max());
     TracePosition(being_solved.board,being_solved.spec);
 
     play_phase = play_finalising_replay;

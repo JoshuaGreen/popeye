@@ -25,7 +25,7 @@ stip_length_type conditional_pipe_solve_delegate(slice_index si)
   solve_nr_remaining = length_unspecified;
 
   fork_solve_delegate(si);
-  result = solve_result;
+  result = solve_result_min();
 
   solve_nr_remaining = save_solve_nr_remaining;
   set_solve_result_range(save_solve_result_min, save_solve_result_max);

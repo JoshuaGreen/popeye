@@ -71,7 +71,7 @@ void done_placing_mating_piece_attacker(void)
   replay_fleshed_out_move_sequence(play_replay_testing);
   play_phase = play_attacking_mating_piece;
 
-  record_decision_result(solve_result);
+  record_decision_result(solve_result_max());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
