@@ -21,6 +21,7 @@ void set_solve_result_min(stip_length_type min_result);
 void set_solve_result_max(stip_length_type max_result);
 void increment_solve_result(void);
 void decrement_solve_result(void);
+void add_solve_result_possibility(stip_length_type r);
 
 /* Try to solve in solve_nr_remaining half-moves.
  * @param si slice index

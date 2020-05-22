@@ -58,6 +58,13 @@ void decrement_solve_result(void)
   --solve_result_min_stored;
   --solve_result_max_stored;
 }
+void add_solve_result_possibility(stip_length_type const r)
+{
+  if (r > solve_result_max)
+    solve_result_max = r;
+  else if (r < solve_result_min)
+    solve_result_min = r;
+}
 
 /* Detect whether solve_result indicates that solving has succeeded
  * @return true iff solving has succeeded

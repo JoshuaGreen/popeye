@@ -58,17 +58,18 @@ static slice_index alloc_degenerate_tree_guard_slice(stip_length_type length,
  * @param si slice index of slice being solved
  * @param n maximum number of half moves until end state has to be reached
  * @param n_min minimum number of half-moves to try
- * @return length of solution found and written, i.e.:
+ * @note assigns solve_result to the length of solution found and written, i.e.:
  *            previous_move_is_illegal the move just played or being played is illegal
  *            <=n length of shortest solution found
  *            n+2 no solution found
  */
-static stip_length_type delegate_solve(slice_index si,
-                                       stip_length_type n,
-                                       stip_length_type n_min)
+static void delegate_solve(slice_index si,
+                           stip_length_type n,
+                           stip_length_type n_min)
 {
   stip_length_type result = n+2;
   stip_length_type const save_solve_nr_remaining = MOVE_HAS_SOLVED_LENGTH();
+  stip_length_type result_min = solve_result_min();
 
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",si);
@@ -79,17 +80,19 @@ static stip_length_type delegate_solve(slice_index si,
   {
     pipe_solve_delegate(si);
 
-    result = solve_result;
-    if (result<=MOVE_HAS_SOLVED_LENGTH())
+    stip_length_type const solve_result_m = solve_result_min();
+    if (solve_result_m<=MOVE_HAS_SOLVED_LENGTH())
+      if (solve_result_m<result_min)
+        result_min = solve_result_m;
+    if (solve_result_max()<=MOVE_HAS_SOLVED_LENGTH())
       break;
   }
 
+  set_solve_result_min(result_min);
   solve_nr_remaining = save_solve_nr_remaining;
 
   TraceFunctionExit(__func__);
-  TraceFunctionResult("%u",result);
   TraceFunctionResultEnd();
-  return result;
 }
 
 /* Try to solve in solve_nr_remaining half-moves.
@@ -123,8 +126,18 @@ void degenerate_tree_solve(slice_index si)
     {
       stip_length_type const parity = (solve_nr_remaining-slack_length)%2;
       stip_length_type const n_interm = max_length_short_solutions+slack_length-parity;
-      if (delegate_solve(si,n_interm,n_min)>n_interm)
+      delegate_solve(si,n_interm,n_min);
+      stip_length_type const solve_max = solve_result_max();
+      if (solve_max>n_interm)
+        stip_length_type const solve_min = solve_result_min();
         delegate_solve(si,solve_nr_remaining,solve_nr_remaining);
+        if (solve_result_min<=n_interm)
+        {
+          if (solve_min<solve_result_min())
+            set_solve_result_min(solve_min);
+          if (solve_max>solve_result_max())
+            set_solve_result_max(solve_max);
+        }
     }
     else
       delegate_solve(si,solve_nr_remaining,solve_nr_remaining);

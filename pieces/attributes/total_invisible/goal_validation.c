@@ -176,7 +176,7 @@ void total_invisible_goal_guard_solve(slice_index si)
 
   if (play_phase==play_replay_validating)
   {
-    if (solve_result==previous_move_has_not_solved)
+    if (solve_result_must_equal(previous_move_has_not_solved))
       mate_validation_result = no_mate;
     else if (make_a_flight())
     {

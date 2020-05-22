@@ -28,10 +28,25 @@ void not_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  stip_length_type const solve_result_m = solve_result_min();
-  if (solve_result_m>MOVE_HAS_SOLVED_LENGTH())
+  stip_length_type const result_min = solve_result_min();
+  stip_length_type const result_max = solve_result_max();
+  if (result_min>MOVE_HAS_SOLVED_LENGTH())
     set_solve_result(MOVE_HAS_SOLVED_LENGTH());
-  else if (solve_result_m>=previous_move_has_solved)
+  else if (result_min<previous_move_has_solved)
+    if (result_max>MOVE_HAS_SOLVED_LENGTH())
+    {
+      add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
+      if (previous_move_has_solved<=MOVE_HAS_SOLVED_LENGTH())
+        add_solve_result_possibility(MOVE_HAS_NOT_SOLVED_LENGTH());
+    }
+    else if (result_max>=previous_move_has_solved)
+      add_solve_result_possibility(MOVE_HAS_NOT_SOLVED_LENGTH());
+  else if (result_max>MOVE_HAS_SOLVED_LENGTH())
+    if (MOVE_HAS_NOT_SOLVED_LENGTH()<MOVE_HAS_SOLVED_LENGTH())
+      set_solve_result_range(MOVE_HAS_NOT_SOLVED_LENGTH(), MOVE_HAS_SOLVED_LENGTH());
+    else
+      set_solve_result_range(MOVE_HAS_SOLVED_LENGTH(), MOVE_HAS_NOT_SOLVED_LENGTH());
+  else
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
