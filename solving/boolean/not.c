@@ -41,13 +41,12 @@ void not_solve(slice_index si)
     }
     else if (result_max>=previous_move_has_solved)
       add_solve_result_possibility(MOVE_HAS_NOT_SOLVED_LENGTH());
-  else if (result_max>MOVE_HAS_SOLVED_LENGTH())
-    if (MOVE_HAS_NOT_SOLVED_LENGTH()<MOVE_HAS_SOLVED_LENGTH())
-      set_solve_result_range(MOVE_HAS_NOT_SOLVED_LENGTH(), MOVE_HAS_SOLVED_LENGTH());
-    else
-      set_solve_result_range(MOVE_HAS_SOLVED_LENGTH(), MOVE_HAS_NOT_SOLVED_LENGTH());
   else
+  {
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
+    if (result_max>MOVE_HAS_SOLVED_LENGTH())
+      add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
+  }
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
