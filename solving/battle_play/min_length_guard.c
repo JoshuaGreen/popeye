@@ -61,10 +61,13 @@ void min_length_guard_solve(slice_index si)
 
   pipe_solve_delegate(si);
 
-  if (solve_result>previous_move_is_illegal
-      && solve_nr_remaining+min_length>length+solve_result)
+  if (solve_result_min()>previous_move_is_illegal
+      && solve_nr_remaining+min_length>length+solve_result_max())
     /* the defender has refuted by reaching the goal too early */
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
+  else if (solve_result_max()>previous_move_is_illegal
+           && solve_nr_remaining+min_length>length+solve_result_min())
+    add_solve_result_possibility(MOVE_HAS_NOT_SOLVED_LENGTH());
 
   TraceFunctionExit(__func__);
   TraceFunctionResultEnd();
