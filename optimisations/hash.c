@@ -2263,11 +2263,13 @@ stip_length_type delegate_can_attack_in_n(slice_index si,
   pipe_solve_delegate(si);
 
   result = solve_result_max();
-
-  if (result<=MOVE_HAS_SOLVED_LENGTH())
-    addtohash_battle_success(base,result,min_length_adjusted);
-  else
+  
+  if (result>MOVE_HAS_SOLVED_LENGTH())
+    /* TODO: Should we do something different here if solve_result_min()<=MOVE_HAS_SOLVED_LENGTH()? */
     addtohash_battle_nosuccess(base,solve_nr_remaining,min_length_adjusted);
+  else
+    /* TODO: Should we store something different if solve_result_min()<result? */
+    addtohash_battle_success(base,result,min_length_adjusted);
 
   TraceFunctionExit(__func__);
   TraceFunctionResult("%u",result);
