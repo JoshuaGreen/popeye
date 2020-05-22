@@ -2262,7 +2262,7 @@ stip_length_type delegate_can_attack_in_n(slice_index si,
 
   pipe_solve_delegate(si);
 
-  result = solve_result;
+  result = solve_result_max();
 
   if (result<=MOVE_HAS_SOLVED_LENGTH())
     addtohash_battle_success(base,result,min_length_adjusted);
@@ -2310,7 +2310,7 @@ void attack_hashed_tester_solve(slice_index si)
 
   he = dhtLookupElement(pyhash,&hashBuffers[nbply]);
   if (he==dhtNilElement)
-    set_solve_result(delegate_can_attack_in_n(si,min_length_adjusted));
+    delegate_can_attack_in_n(si,min_length_adjusted);
   else
   {
     hashElement_union_t const * const hue = (hashElement_union_t const *)he;
@@ -2336,7 +2336,7 @@ void attack_hashed_tester_solve(slice_index si)
           TraceValue("->%u",max_unsolvable);
           TraceEOL();
         }
-        set_solve_result(delegate_can_attack_in_n(si,min_length_adjusted));
+        delegate_can_attack_in_n(si,min_length_adjusted);
       }
     }
   }
@@ -2465,7 +2465,7 @@ void help_hashed_solve(slice_index si)
       else
         pipe_solve_delegate(si);
 
-      if (solve_result==MOVE_HAS_NOT_SOLVED_LENGTH())
+      if (solve_result_must_equal(MOVE_HAS_NOT_SOLVED_LENGTH()))
         addtohash_help(si);
     }
   }
@@ -2512,7 +2512,7 @@ void help_hashed_tester_solve(slice_index si)
     else
       pipe_solve_delegate(si);
 
-    if (solve_result>MOVE_HAS_SOLVED_LENGTH())
+    if (solve_result_min()>MOVE_HAS_SOLVED_LENGTH())
       addtohash_help(base);
   }
 
