@@ -148,7 +148,7 @@ void find_defense_solve(slice_index si)
     pipe_solve_delegate(si);
 
     stip_length_type solve_result_m = solve_result_max();
-    assert(slack_length<=solve_result_m || solve_result_might_be(this_move_is_illegal));
+    assert(slack_length<=solve_result_m || solve_result_might_equal(this_move_is_illegal));
     if (result_intermediate_max<solve_result_m)
       result_intermediate_max = solve_result_m;
     solve_result_m = solve_result_min();

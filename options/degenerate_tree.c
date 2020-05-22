@@ -129,15 +129,17 @@ void degenerate_tree_solve(slice_index si)
       delegate_solve(si,n_interm,n_min);
       stip_length_type const solve_max = solve_result_max();
       if (solve_max>n_interm)
+      {
         stip_length_type const solve_min = solve_result_min();
         delegate_solve(si,solve_nr_remaining,solve_nr_remaining);
-        if (solve_result_min<=n_interm)
+        if (solve_min<=n_interm)
         {
           if (solve_min<solve_result_min())
             set_solve_result_min(solve_min);
           if (solve_max>solve_result_max())
             set_solve_result_max(solve_max);
         }
+      }
     }
     else
       delegate_solve(si,solve_nr_remaining,solve_nr_remaining);

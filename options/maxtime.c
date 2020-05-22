@@ -7,6 +7,7 @@
 #include "stipulation/slice_insertion.h"
 #include "solving/pipe.h"
 #include "solving/incomplete.h"
+#include "solving/has_solution_type.enum.h"
 #include "output/plaintext/message.h"
 #include "debugging/trace.h"
 #include "debugging/assert.h"

@@ -104,7 +104,7 @@ static void defend_with_non_killer_pieces(slice_index si)
   TraceSquare(killer_pos);
   TraceFunctionParamListEnd();
 
-  for (bnp = boardnum; result<=next_move_has_solution && *bnp!=initsquare; ++bnp)
+  for (bnp = boardnum; result_min<=next_move_has_solution && *bnp!=initsquare; ++bnp)
     if (*bnp!=killer_pos && TSTFLAG(being_solved.spec[*bnp],defender))
     {
       init_single_piece_move_generator(*bnp);

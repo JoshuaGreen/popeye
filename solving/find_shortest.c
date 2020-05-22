@@ -76,8 +76,8 @@ void find_shortest_solve(slice_index si)
     pipe_solve_delegate(si);
     stip_length_type const solve_min = solve_result_min();
     if (solve_min<=MOVE_HAS_SOLVED_LENGTH())
-      if (solve_min<result_m)
-        result_m = solve_min;
+      if (solve_min<result_min)
+        result_min = solve_min;
     if (solve_result_max()<=MOVE_HAS_SOLVED_LENGTH())
       break;
   }
