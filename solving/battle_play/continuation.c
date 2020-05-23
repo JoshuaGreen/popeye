@@ -61,7 +61,10 @@ void continuation_solver_solve(slice_index si)
     pipe_solve_delegate(si);
 
     assert(solve_result_min()<=test_result_max || solve_result_max()>=test_result_min);
-    set_solve_result_range(test_result_min, test_result_max);
+    if (test_result_min > solve_result_min())
+      set_solve_result_min(test_result_min);
+    if (test_result_max < solve_result_max())
+      set_solve_result_max(test_result_min);
     solve_nr_remaining = save_solve_nr_remaining;
   }
 
