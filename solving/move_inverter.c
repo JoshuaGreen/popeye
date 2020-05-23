@@ -37,6 +37,7 @@ void move_inverter_solve(slice_index si)
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   }
   if (solve_result_might_equal(previous_move_has_solved))
+  {
     if (found_match)
       add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
     else
@@ -44,7 +45,9 @@ void move_inverter_solve(slice_index si)
       found_match = true;
       set_solve_result(MOVE_HAS_SOLVED_LENGTH());
     }
+  }
   if (solve_result_might_equal(previous_move_is_illegal))
+  {
     if (found_match)
       add_solve_result_possibility(immobility_on_next_move);
     else
@@ -52,6 +55,7 @@ void move_inverter_solve(slice_index si)
       found_match = true;
       set_solve_result(immobility_on_next_move);
     }
+  }
   if (!found_match)
   {
     assert(0);

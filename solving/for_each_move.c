@@ -154,8 +154,10 @@ void for_each_attack_solve(slice_index si)
     {
       stip_length_type min_value = solve_result_min();
       if (slack_length<min_value)
+      {
         if (max_value<result_intermediate_max)
           result_intermediate_max = max_value;
+      }
       else
         min_value = slack_length + 1;
       if (min_value<result_intermediate_min)
