@@ -62,7 +62,7 @@ static struct
 {
     backtrack_type type;
     decision_level_type max_level;
-    has_solution_type result;
+    decision_result_type result;
     unsigned int nr_check_vectors;
     ply ply_failure;
     Side side_failure;
@@ -107,9 +107,10 @@ static void report_endline(char const *file, unsigned int line)
          , current_consumption.fleshed_out[White]
          , current_consumption.fleshed_out[Black]
          );
-  printf(" - %u: r:%u t:%u m:%u n:%u p:%u i:%lu",
+  printf(" - %u: r:%u-%u t:%u m:%u n:%u p:%u i:%lu",
          decision_top-1,
-         (unsigned int) backtracking[decision_top-1].result,
+         (unsigned int) backtracking[decision_top-1].result.result_min,
+         (unsigned int) backtracking[decision_top-1].result.result_max,
          (unsigned int) backtracking[decision_top-1].type,
          backtracking[decision_top-1].max_level,
          backtracking[decision_top-1].nr_check_vectors,
@@ -148,7 +149,8 @@ void initialise_decision_context_impl(char const *file, unsigned int line, char 
 
   backtracking[decision_top].max_level = decision_level_latest;
   backtracking[decision_top].type = backtrack_none;
-  backtracking[decision_top].result = previous_move_is_illegal;
+  backtracking[decision_top].result.result_min = previous_move_is_illegal;
+  backtracking[decision_top].result.result_max = previous_move_is_illegal;
 }
 
 void record_decision_for_inserted_invisible(PieceIdType id)
@@ -175,7 +177,8 @@ static decision_level_type push_decision_common(char const *file, unsigned int l
 
   backtracking[decision_top].max_level = decision_level_latest;
   backtracking[decision_top].type = backtrack_none;
-  backtracking[decision_top].result = previous_move_is_illegal;
+  backtracking[decision_top].result.result_min = previous_move_is_illegal;
+  backtracking[decision_top].result.result_max = previous_move_is_illegal;
   backtracking[decision_top].nr_check_vectors = UINT_MAX;
   backtracking[decision_top].ply_failure = ply_nil;
   backtracking[decision_top].side_failure = no_side;
@@ -419,7 +422,8 @@ void record_decision_outcome_impl(char const *file, unsigned int line, char cons
 #endif
 }
 
-void record_decision_result(has_solution_type recorded_result)
+/* returns the stored maximum value, which may be < recorded_result_max */
+has_solution_type record_decision_result(has_solution_type const recorded_result_min, has_solution_type recorded_result_max)
 {
   TraceFunctionEntry(__func__);
   TraceFunctionParam("%u",recorded_result);
@@ -429,33 +433,49 @@ void record_decision_result(has_solution_type recorded_result)
   TraceValue("%u",recorded_result);
   TraceEOL();
 
-  assert(recorded_result<=previous_move_has_not_solved);
+  if (recorded_result_max>previous_move_has_not_solved)
+    recorded_result_max = previous_move_has_not_solved;
+  assert(recorded_result_min<=recorded_result_max);
 
-  if (recorded_result>backtracking[decision_top].result)
+  if (recorded_result_min>backtracking[decision_top].result.result_min)
   {
-    backtracking[decision_top].result = recorded_result;
+    backtracking[decision_top].result.result_min = recorded_result_min;
 
 #if defined(REPORT_DECISIONS)
     printf("!%*s%u",decision_top," ",decision_top);
-    printf(" - combined result:%u\n",
-           (unsigned int) backtracking[decision_top].result);
+    printf(" - combined result.result_min:%u\n",
+           (unsigned int) backtracking[decision_top].result.result_min);
+    fflush(stdout);
+#endif
+  }
+  if (recorded_result_max>backtracking[decision_top].result.result_max)
+  {
+    backtracking[decision_top].result.result_max = recorded_result_max;
+
+#if defined(REPORT_DECISIONS)
+    printf("!%*s%u",decision_top," ",decision_top);
+    printf(" - combined result.result_max:%u\n",
+           (unsigned int) backtracking[decision_top].result.result_max);
     fflush(stdout);
 #endif
   }
 
   TraceFunctionExit(__func__);
+  TraceFunctionResult("%u",recorded_result_max);
   TraceFunctionResultEnd();
+  return recorded_result_max;
 }
 
-has_solution_type get_decision_result(void)
+decision_result_type get_decision_result(void)
 {
-  has_solution_type const result = backtracking[decision_top].result;
+  decision_result_type const result = backtracking[decision_top].result;
 
   TraceFunctionEntry(__func__);
   TraceFunctionParamListEnd();
 
   TraceFunctionExit(__func__);
-  TraceFunctionResult("%u",result);
+  TraceFunctionResult("%u",result.result_min);
+  TraceFunctionResult("%u",result.result_max);
   TraceFunctionResultEnd();
   return result;
 }
@@ -476,22 +496,31 @@ void pop_decision(void)
   --decision_top;
 
   TraceValue("%u",decision_top);
-  TraceValue("%u",backtracking[decision_top+1].result);
+  TraceValue("%u",backtracking[decision_top+1].result.result_min);
+  TraceValue("%u",backtracking[decision_top+1].result.result_max);
   TraceValue("%u",backtracking[decision_top+1].type);
   TraceValue("%u",backtracking[decision_top+1].nr_check_vectors);
   TraceValue("%u",backtracking[decision_top+1].ply_failure);
-  TraceValue("%u",backtracking[decision_top].result);
+  TraceValue("%u",backtracking[decision_top].result.result_min);
+  TraceValue("%u",backtracking[decision_top].result.result_max);
   TraceValue("%u",backtracking[decision_top].type);
   TraceValue("%u",backtracking[decision_top].nr_check_vectors);
   TraceValue("%u",backtracking[decision_top].ply_failure);
   TraceEOL();
-
-  if ((backtracking[decision_top+1].result
-       >backtracking[decision_top].result)
-      || ((backtracking[decision_top+1].result
-           ==backtracking[decision_top].result)
-          && (backtracking[decision_top+1].ply_failure
-              >=backtracking[decision_top].ply_failure)))
+  
+  boolean copy_value;
+  if (backtracking[decision_top+1].result.result_max > backtracking[decision_top].result.result_max)
+    copy_value = true;
+  else if (backtracking[decision_top+1].result.result_max < backtracking[decision_top].result.result_max)
+    copy_value = false;
+  else if (backtracking[decision_top+1].result.result_min > backtracking[decision_top].result.result_min)
+    copy_value = true;
+  else if (backtracking[decision_top+1].result.result_min < backtracking[decision_top].result.result_min)
+    copy_value = false;
+  else
+    copy_value = (backtracking[decision_top+1].ply_failure >= backtracking[decision_top].ply_failure);
+    
+  if (copy_value)
     backtracking[decision_top] = backtracking[decision_top+1];
 
   TraceValue("%u",decision_level_properties[decision_top+1].ply);
@@ -743,17 +772,19 @@ HERE - NO NEED TO TRY OTHER MOVES BY THIS KNIGHT
 
 #if defined(REPORT_DECISIONS)
   printf("!%*s%u",decision_top+1,"<",decision_top+1);
-  printf(" - %u: r:%u t:%u m:%u n:%u p:%u i:%lu",
+  printf(" - %u: r:%u-%u t:%u m:%u n:%u p:%u i:%lu",
          decision_top+1,
-         (unsigned int) backtracking[decision_top+1].result,
+         (unsigned int) backtracking[decision_top+1].result.result_min,
+         (unsigned int) backtracking[decision_top+1].result.result_max,
          (unsigned int) backtracking[decision_top+1].type,
          backtracking[decision_top+1].max_level,
          backtracking[decision_top+1].nr_check_vectors,
          backtracking[decision_top+1].ply_failure,
          decision_level_properties[decision_top].id);
-  printf(" -> %u: r:%u t:%u m:%u n:%u p:%u i:%lu\n",
+  printf(" -> %u: r:%u-%u t:%u m:%u n:%u p:%u i:%lu\n",
          decision_top,
-         (unsigned int) backtracking[decision_top].result,
+         (unsigned int) backtracking[decision_top].result.result_min,
+         (unsigned int) backtracking[decision_top].result.result_max,
          (unsigned int) backtracking[decision_top].type,
          backtracking[decision_top].max_level,
          backtracking[decision_top].nr_check_vectors,
@@ -2480,7 +2511,8 @@ boolean can_decision_level_be_continued(void)
   TraceValue("%u",decision_level_properties[decision_top+1].relevance);
   TraceEOL();
 
-  if (backtracking[decision_top].result==previous_move_has_not_solved)
+  if (backtracking[decision_top].result.result_min==previous_move_has_not_solved
+      && backtracking[decision_top].result.result_max==previous_move_has_not_solved)
     result = false;
   else if (decision_level_properties[decision_top+1].relevance==relevance_relevant)
     result = true;

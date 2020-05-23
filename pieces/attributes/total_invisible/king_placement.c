@@ -23,7 +23,7 @@ static void done_validating_king_placements(void)
   {
     case play_detecting_revelations:
       do_revelation_bookkeeping();
-      record_decision_result(previous_move_has_solved);
+      record_decision_result(previous_move_has_solved, previous_move_has_solved);
       break;
 
     case play_validating_mate:
@@ -46,7 +46,7 @@ static void done_validating_king_placements(void)
         if (mate_validation_result<combined_validation_result)
           combined_validation_result = mate_validation_result;
         if (mate_validation_result<=mate_attackable)
-          record_decision_result(previous_move_has_not_solved);
+          record_decision_result(previous_move_has_not_solved, previous_move_has_not_solved);
       }
 
       break;
@@ -57,7 +57,7 @@ static void done_validating_king_placements(void)
       {
         play_phase = play_attacking_mating_piece;
         /* until we prove otherwise: */
-        record_decision_result(previous_move_has_solved);
+        record_decision_result(previous_move_has_solved, previous_move_has_solved);
         attack_mating_piece(advers(trait[top_ply_of_regular_play]),sq_mating_piece_to_be_attacked);
         play_phase = play_testing_mate;
       }
@@ -68,7 +68,7 @@ static void done_validating_king_placements(void)
         replay_fleshed_out_move_sequence(play_replay_testing);
         play_phase = play_testing_mate;
 
-        record_decision_result(solve_result_max());
+        set_solve_result_max(record_decision_result(solve_result_min(), solve_result_max()));
       }
 
       break;
@@ -192,14 +192,14 @@ static void indistinct_king_placement_validation(void)
       record_decision_outcome("%s","The king to be mated can be anywhere");
       REPORT_DEADEND;
       combined_validation_result = no_mate;
-      record_decision_result(previous_move_has_not_solved);
+      record_decision_result(previous_move_has_not_solved, previous_move_has_not_solved);
       break;
 
     default:
       TraceText("The king to be mated can be anywhere\n");
       record_decision_outcome("%s","The king to be mated can be anywhere");
       REPORT_DEADEND;
-      record_decision_result(previous_move_has_not_solved);
+      record_decision_result(previous_move_has_not_solved, previous_move_has_not_solved);
       break;
   }
 
@@ -266,7 +266,7 @@ void validate_king_placements(void)
            && nr_total_invisbles_consumed()==total_invisible_number)
   {
     record_decision_outcome("%s","The king of the mating side can't be placed");
-    record_decision_result(previous_move_is_illegal);
+    record_decision_result(previous_move_is_illegal, previous_move_is_illegal);
     REPORT_DEADEND;
   }
   else

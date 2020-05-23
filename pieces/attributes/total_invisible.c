@@ -545,14 +545,26 @@ static void test_mate(void)
   TraceFunctionEntry(__func__);
   TraceFunctionParamListEnd();
 
+#if !defined(NDEBUG)
+  decision_result_type result;
+#endif
+
   switch (combined_validation_result)
   {
     case mate_unvalidated:
-      assert(get_decision_result()==previous_move_is_illegal);
+#if !defined(NDEBUG)
+      result = get_decision_result();
+#endif
+      assert(result.result_min<=previous_move_is_illegal && result.result_max>=previous_move_is_illegal);
+      record_decision_result(previous_move_is_illegal, previous_move_is_illegal);
       break;
 
     case no_mate:
-      assert(get_decision_result()==previous_move_has_not_solved);
+#if !defined(NDEBUG)
+      result = get_decision_result();
+#endif
+      assert(result.result_min<=previous_move_has_not_solved && result.result_max>=previous_move_has_not_solved);
+      record_decision_result(previous_move_has_not_solved, previous_move_has_not_solved);
       break;
 
     case mate_attackable:
@@ -565,7 +577,11 @@ static void test_mate(void)
       /* we only replay moves for TI revelation */
       initialise_decision_context();
       start_iteration();
-      assert(get_decision_result()==previous_move_has_solved);
+#if !defined(NDEBUG)
+      result = get_decision_result();
+#endif
+      assert(result.result_min<=previous_move_has_solved && result.result_max>=previous_move_has_solved);
+      record_decision_result(previous_move_has_solved, previous_move_has_solved);
       break;
 
     default:
@@ -685,7 +701,8 @@ void total_invisible_move_sequence_tester_solve(slice_index si)
     unrewind_effects();
     play_phase = play_regular;
 
-    set_solve_result(get_decision_result());
+    decision_result_type const result = get_decision_result();
+    set_solve_result_range(result.result_min, result.result_max);
   }
 
   forget_taboos_for_current_move();

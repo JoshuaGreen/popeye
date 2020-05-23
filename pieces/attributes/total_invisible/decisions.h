@@ -149,8 +149,14 @@ void backtrack_from_revelation_update(void);
  */
 void backtrack_no_further_than(decision_level_type level);
 
-void record_decision_result(has_solution_type recorded_result);
-has_solution_type get_decision_result(void);
+/* returns the stored maximum value, which may be < recorded_result_max */
+has_solution_type record_decision_result(has_solution_type recorded_result_min, has_solution_type recorded_result_max);
+
+typedef struct {
+  has_solution_type result_min;
+  has_solution_type result_max;
+} decision_result_type;
+decision_result_type get_decision_result(void);
 
 boolean can_decision_level_be_continued(void);
 
