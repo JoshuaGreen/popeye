@@ -226,7 +226,7 @@ void ohneschach_stop_if_check_and_not_mate_solve(slice_index si)
   {
     ohneschach_undecidable_goal_detected[nbply+1] = false;
 
-    switch (conditional_pipe_solve_delegate(si))
+    switch (conditional_pipe_solve_delegate(si).result_min)
     {
       case previous_move_is_illegal:
         ohneschach_undecidable_goal_detected[nbply] = recursion_stopped;

@@ -17,7 +17,12 @@
  *        previous_move_is_illegal
  *        immobility_on_next_move
  */
+ 
+typedef struct {
+  stip_length_type result_min;
+  stip_length_type result_max;
+} conditional_pipe_solve_return_type;
 
-stip_length_type conditional_pipe_solve_delegate(slice_index si);
+conditional_pipe_solve_return_type conditional_pipe_solve_delegate(slice_index si);
 
 #endif

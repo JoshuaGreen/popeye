@@ -87,7 +87,7 @@ static boolean exists_redundant_white_piece(slice_index si)
         piece_walk_type const p = get_walk_of_piece_on_square(sq);
         Flags const sp = being_solved.spec[sq];
         empty_square(sq);
-        result = conditional_pipe_solve_delegate(si)==previous_move_has_solved;
+        result = conditional_pipe_solve_delegate(si).result_min==previous_move_has_solved;
         occupy_square(sq,p,sp);
       }
     }

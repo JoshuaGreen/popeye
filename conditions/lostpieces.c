@@ -56,7 +56,7 @@ void lostpieces_remover_solve(slice_index si)
         TraceSquare(*bnp);TraceEOL();
         being_solved.king_square[side_losing] = *bnp;
         SETFLAG(being_solved.spec[*bnp],Royal);
-        if (conditional_pipe_solve_delegate(temporary_hack_lost_piece_tester[side_losing])
+        if (conditional_pipe_solve_delegate(temporary_hack_lost_piece_tester[side_losing]).result_min
             ==previous_move_has_solved)
           squares_with_lost[nr_lost++] = *bnp;
         CLRFLAG(being_solved.spec[*bnp],Royal);

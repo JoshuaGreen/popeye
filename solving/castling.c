@@ -760,7 +760,7 @@ boolean castling_is_intermediate_king_move_legal(Side side, square to)
     curr_generation->arrival = to;
     push_move_no_capture();
 
-    result = (conditional_pipe_solve_delegate(temporary_hack_castling_intermediate_move_legality_tester[side])
+    result = (conditional_pipe_solve_delegate(temporary_hack_castling_intermediate_move_legality_tester[side]).result_min
               ==previous_move_has_solved);
 
     finply();
