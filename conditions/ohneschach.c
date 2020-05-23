@@ -226,37 +226,59 @@ void ohneschach_stop_if_check_and_not_mate_solve(slice_index si)
   {
     ohneschach_undecidable_goal_detected[nbply+1] = false;
 
-    switch (conditional_pipe_solve_delegate(si).result_min)
+    boolean found_matching_case = false;
+    conditional_pipe_solve_return_type const result = conditional_pipe_solve_delegate(si);
+    if (result.result_min<=immobility_on_next_move && result.result_max>=immobility_on_next_move)
     {
-      case previous_move_is_illegal:
+      found_matching_case = true;
+      pipe_solve_delegate(si);
+    }
+    if (result.result_min<=previous_move_is_illegal && result.result_max>=previous_move_is_illegal)
+    {
+      if (result.result_min==previous_move_is_illegal && result.result_max==previous_move_is_illegal)
+      {
         ohneschach_undecidable_goal_detected[nbply] = recursion_stopped;
         TraceValue("%u",nbply);
         TraceValue("%u",ohneschach_undecidable_goal_detected[nbply]);
         TraceEOL();
         recursion_stopped = false;
+      }
+      if (found_matching_case)
+        add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
+      else
+      {
+        found_matching_case = true;
         set_solve_result(MOVE_HAS_SOLVED_LENGTH());
-        break;
-
-      case previous_move_has_not_solved:
+      }
+    }
+    if (result.result_min<=previous_move_has_not_solved && result.result_max>=previous_move_has_not_solved)
+    {
+      if (found_matching_case)
+        add_solve_result_possibility(previous_move_is_illegal);
+      else
+      {
+        found_matching_case = true;
         set_solve_result(previous_move_is_illegal);
-        break;
-
-      case previous_move_has_solved:
+      }
+    }
+    if (result.result_min<=previous_move_has_solved && result.result_max>=previous_move_has_solved)
+    {
+      if (result.result_min==previous_move_has_solved && result.result_max==previous_move_has_solved)
+      {
         ohneschach_undecidable_goal_detected[nbply] = ohneschach_undecidable_goal_detected[nbply+1];
         TraceValue("%u",nbply);
         TraceValue("%u",ohneschach_undecidable_goal_detected[nbply]);
         TraceEOL();
+      }
+      if (found_matching_case)
+        add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
+      else
+      {
+        found_matching_case = true;
         set_solve_result(MOVE_HAS_SOLVED_LENGTH());
-        break;
-
-      case immobility_on_next_move:
-        pipe_solve_delegate(si);
-        break;
-
-      default:
-        assert(0);
-        break;
+      }
     }
+    assert(found_matching_case);
   }
   else
     pipe_solve_delegate(si);

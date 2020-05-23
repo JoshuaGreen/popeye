@@ -26,21 +26,28 @@ void end_of_branch_solve(slice_index si)
 
   assert(solve_nr_remaining>=previous_move_has_solved);
 
-  switch (conditional_pipe_solve_delegate(si).result_min)
+  boolean found_matching_case = false;
+  conditional_pipe_solve_return_type const result = conditional_pipe_solve_delegate(si);
+  if ((result.result_min<=previous_move_has_not_solved && result.result_max>=previous_move_has_not_solved) ||
+      (result.result_min<=immobility_on_next_move && result.result_max>=immobility_on_next_move))
   {
-    case previous_move_has_solved:
+    found_matching_case = true;
+    pipe_solve_delegate(si);
+  }
+  if (result.result_min<=previous_move_has_solved && result.result_max>=previous_move_has_solved)
+  {
+    if (found_matching_case)
+      add_solve_result_possibility(previous_move_has_solved);
+    else
+    {
+      found_matching_case = true;
       set_solve_result(previous_move_has_solved);
-      break;
-
-    case previous_move_has_not_solved:
-    case immobility_on_next_move: /* we have to continue in series movers! */
-      pipe_solve_delegate(si);
-      break;
-
-    default:
-      assert(0);
-      set_solve_result(previous_move_is_illegal);
-      break;
+    }
+  }
+  if (!found_matching_case)
+  {
+    assert(0);
+    set_solve_result(previous_move_is_illegal);
   }
 
   TraceFunctionExit(__func__);

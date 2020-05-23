@@ -307,20 +307,27 @@ void exclusive_chess_legality_tester_solve(slice_index si)
     if (is_current_move_in_table(exclusive_chess_undecidable_continuations[parent_ply[nbply]]))
       set_solve_result(this_move_is_illegal);
     else
-      switch (conditional_pipe_solve_delegate(temporary_hack_mate_tester[advers(trait[nbply])]).result_min)
+    {
+      boolean found_matching_case = false;
+      conditional_pipe_solve_return_type const result = conditional_pipe_solve_delegate(temporary_hack_mate_tester[advers(trait[nbply])]);
+      if (result.result_min<=previous_move_has_not_solved && result.result_max>=previous_move_has_not_solved)
       {
-        case this_move_is_illegal:
-          set_solve_result(this_move_is_illegal);
-          break;
-
-        case previous_move_has_not_solved:
-          pipe_solve_delegate(si);
-          break;
-
-        default:
-          set_solve_result(previous_move_has_solved);
-          break;
+        found_matching_case = true;
+        pipe_solve_delegate(si);      
       }
+      if (result.result_min<=this_move_is_illegal && result.result_max>=this_move_is_illegal)
+      {
+        if (found_matching_case)
+          add_solve_result_possibility(this_move_is_illegal);
+        else
+        {
+          found_matching_case = true;
+          set_solve_result(this_move_is_illegal);
+        }
+      }
+      if (!found_matching_case)
+        set_solve_result(previous_move_has_solved);
+    }
   }
   else
     pipe_solve_delegate(si);

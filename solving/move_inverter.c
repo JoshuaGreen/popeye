@@ -29,34 +29,34 @@ void move_inverter_solve(slice_index si)
 
   pipe_solve_delegate(si);
   
-  boolean found_match = false;
+  boolean found_matching_case = false;
   if (solve_result_might_equal(immobility_on_next_move) ||
       solve_result_might_equal(previous_move_has_not_solved))
   {
-    found_match = true;
+    found_matching_case = true;
     set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
   }
   if (solve_result_might_equal(previous_move_has_solved))
   {
-    if (found_match)
+    if (found_matching_case)
       add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
     else
     {
-      found_match = true;
+      found_matching_case = true;
       set_solve_result(MOVE_HAS_SOLVED_LENGTH());
     }
   }
   if (solve_result_might_equal(previous_move_is_illegal))
   {
-    if (found_match)
+    if (found_matching_case)
       add_solve_result_possibility(immobility_on_next_move);
     else
     {
-      found_match = true;
+      found_matching_case = true;
       set_solve_result(immobility_on_next_move);
     }
   }
-  if (!found_match)
+  if (!found_matching_case)
   {
     assert(0);
     set_solve_result(immobility_on_next_move);

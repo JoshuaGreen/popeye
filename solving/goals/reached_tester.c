@@ -24,6 +24,7 @@ void goal_reached_tester_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
+  boolean found_matching_case = false;
   switch (conditional_pipe_solve_delegate(si).result_min)
   {
     case previous_move_is_illegal:
