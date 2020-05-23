@@ -29,41 +29,34 @@ void move_inverter_solve(slice_index si)
 
   pipe_solve_delegate(si);
   
-  boolean const prev_illegal = solve_result_might_equal(previous_move_is_illegal);
-  boolean const immob_next = solve_result_might_equal(immobility_on_next_move);
-  boolean const prev_not_solved = solve_result_might_equal(previous_move_has_not_solved);
-  boolean const prev_solved = solve_result_might_equal(previous_move_has_solved);
-  
-  assert(prev_illegal || immob_next || prev_not_solved || prev_solved);
-  
-  stip_length_type result_min;
-  stip_length_type result_max;
-  
-  if (immob_next || prev_not_solved)
+  boolean found_match = false;
+  if (solve_result_might_equal(immobility_on_next_move) ||
+      solve_result_might_equal(previous_move_has_not_solved))
   {
-    if (prev_illegal)
-      result_min = immobility_on_next_move;
-    else if (prev_solved)
-      result_min = MOVE_HAS_SOLVED_LENGTH();
+    found_match = true;
+    set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
+  }
+  if (solve_result_might_equal(previous_move_has_solved))
+    if (found_match)
+      add_solve_result_possibility(MOVE_HAS_SOLVED_LENGTH());
     else
-      result_min = MOVE_HAS_NOT_SOLVED_LENGTH();
-    result_max = MOVE_HAS_NOT_SOLVED_LENGTH();
-  }
-  else if (prev_solved)
-  {
-    if (prev_illegal)
-      result_min = immobility_on_next_move;
+    {
+      found_match = true;
+      set_solve_result(MOVE_HAS_SOLVED_LENGTH());
+    }
+  if (solve_result_might_equal(previous_move_is_illegal))
+    if (found_match)
+      add_solve_result_possibility(immobility_on_next_move);
     else
-      result_min = MOVE_HAS_SOLVED_LENGTH();
-    result_max = MOVE_HAS_SOLVED_LENGTH();
-  }
-  else
+    {
+      found_match = true;
+      set_solve_result(immobility_on_next_move);
+    }
+  if (!found_match)
   {
-    result_min = immobility_on_next_move;
-    result_max = immobility_on_next_move;
+    assert(0);
+    set_solve_result(immobility_on_next_move);
   }
-  
-  set_solve_result_range(result_min, result_max);
 
 #ifdef _SE_DECORATE_SOLUTION_
   se_end_set_play();
