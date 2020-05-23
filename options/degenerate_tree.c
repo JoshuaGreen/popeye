@@ -67,7 +67,6 @@ static void delegate_solve(slice_index si,
                            stip_length_type n,
                            stip_length_type n_min)
 {
-  stip_length_type result = n+2;
   stip_length_type const save_solve_nr_remaining = MOVE_HAS_SOLVED_LENGTH();
   stip_length_type result_min = solve_result_min();
 

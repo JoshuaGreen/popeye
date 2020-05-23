@@ -39,7 +39,8 @@ testing_pipe_solve_delegate_return_type testing_pipe_solve_delegate(slice_index 
   set_solve_result_range(save_solve_result_min, save_solve_result_max);
 
   TraceFunctionExit(__func__);
-  TraceFunctionResult("%u",result);
+  TraceFunctionResult("%u",result.result_min);
+  TraceFunctionResult("%u",result.result_max);
   TraceFunctionResultEnd();
   return result;
 }
