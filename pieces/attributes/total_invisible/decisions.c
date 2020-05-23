@@ -426,11 +426,13 @@ void record_decision_outcome_impl(char const *file, unsigned int line, char cons
 has_solution_type record_decision_result(has_solution_type const recorded_result_min, has_solution_type recorded_result_max)
 {
   TraceFunctionEntry(__func__);
-  TraceFunctionParam("%u",recorded_result);
+  TraceFunctionParam("%u",recorded_result_min);
+  TraceFunctionParam("%u",recorded_result_max);
   TraceFunctionParamListEnd();
 
   TraceValue("%u",decision_top);
-  TraceValue("%u",recorded_result);
+  TraceValue("%u",recorded_result_min);
+  TraceValue("%u",recorded_result_max);
   TraceEOL();
 
   if (recorded_result_max>previous_move_has_not_solved)

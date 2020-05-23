@@ -40,7 +40,7 @@ void add_solve_result_possibility(stip_length_type r);
 #define solve(si) \
   TraceValue("%u",solve_nr_remaining), TraceEOL(), \
   dispatch(si), \
-  TraceValue("%u",solve_nr_remaining), TraceValue("%u",solve_result), TraceEOL()
+  TraceValue("%u",solve_nr_remaining), TraceValue("%u",solve_result_min()), TraceValue("%u",solve_result_max()), TraceEOL()
 #else
 #define solve(si) dispatch(si)
 #endif
