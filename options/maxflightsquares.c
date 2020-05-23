@@ -76,7 +76,9 @@ static boolean are_there_too_many_flights(slice_index si)
   number_flights_left = max_nr_flights+1;
   save_rbn = being_solved.king_square[fleeing];
 
-  result = conditional_pipe_solve_delegate(si).result_min==previous_move_has_solved;
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(si);
+  result = (cond_result.result_min==previous_move_has_solved
+            && cond_result.result_max==previous_move_has_solved);
 
   save_rbn = initsquare;
 

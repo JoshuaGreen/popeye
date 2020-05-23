@@ -70,8 +70,9 @@ static boolean exists_legal_move_back_home(void)
   legal_move_count_init(0);
 
   /* the first found legal move back home refutes */
-  result = (conditional_pipe_solve_delegate(temporary_hack_back_home_finder[trait[nbply]]).result_min
-            == previous_move_has_not_solved);
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(temporary_hack_back_home_finder[trait[nbply]]);
+  result = (cond_result.result_min==previous_move_has_not_solved
+            && cond_result.result_max==previous_move_has_not_solved);
 
   legal_move_count_fini();
 

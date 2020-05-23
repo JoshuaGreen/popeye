@@ -760,8 +760,9 @@ boolean castling_is_intermediate_king_move_legal(Side side, square to)
     curr_generation->arrival = to;
     push_move_no_capture();
 
-    result = (conditional_pipe_solve_delegate(temporary_hack_castling_intermediate_move_legality_tester[side]).result_min
-              ==previous_move_has_solved);
+    conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(temporary_hack_castling_intermediate_move_legality_tester[side]);
+    result = (cond_result.result_min==previous_move_has_solved
+              && cond_result.result_max==previous_move_has_solved);
 
     finply();
   }

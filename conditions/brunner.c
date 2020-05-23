@@ -23,8 +23,9 @@ boolean brunner_validate_observation(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  result = (conditional_pipe_solve_delegate(temporary_hack_brunner_check_defense_finder[trait[nbply]]).result_min
-            ==previous_move_has_solved);
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(temporary_hack_brunner_check_defense_finder[trait[nbply]]);
+  result = (cond_result.result_min==previous_move_has_solved
+            && cond_result.result_max==previous_move_has_solved);
 
   PUSH_OBSERVATION_TARGET_AGAIN(nbply);
 

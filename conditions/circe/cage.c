@@ -158,8 +158,9 @@ static boolean find_non_capturing_move(move_effect_journal_index_type rebirth,
   TraceFunctionParamListEnd();
 
   init_single_piece_move_generator(sq_rebirth);
-  result = (conditional_pipe_solve_delegate(temporary_hack_cagecirce_noncapture_finder[moving_side]).result_min
-            ==previous_move_has_solved);
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(temporary_hack_cagecirce_noncapture_finder[moving_side]);
+  result = (cond_result.result_min==previous_move_has_solved
+            && cond_result.result_max==previous_move_has_solved);
 
   TraceFunctionExit(__func__);
   TraceFunctionResult("%u",result);

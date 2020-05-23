@@ -46,7 +46,9 @@ void countermate_filter_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  if (conditional_pipe_solve_delegate(si).result_min==previous_move_has_solved)
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(si);
+  if (cond_result.result_min==previous_move_has_solved
+      && cond_result.result_max==previous_move_has_solved)
     SETFLAG(goal_preprequisites_met[nbply],goal_countermate);
 
   pipe_solve_delegate(si);

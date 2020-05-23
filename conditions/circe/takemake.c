@@ -48,8 +48,9 @@ static boolean init_rebirth_squares(circe_rebirth_context_elmt_type const *conte
 
   init_single_piece_move_generator(context->relevant_square);
 
-  result = (conditional_pipe_solve_delegate(temporary_hack_circe_take_make_rebirth_squares_finder[relevant_side]).result_min
-            ==previous_move_has_solved);
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(temporary_hack_circe_take_make_rebirth_squares_finder[relevant_side]);
+  result = (cond_result.result_min==previous_move_has_solved
+            && cond_result.result_max==previous_move_has_solved);
 
   assert(pi_capturing!=Invalid);
 

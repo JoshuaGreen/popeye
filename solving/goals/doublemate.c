@@ -80,7 +80,9 @@ void doublemate_filter_solve(slice_index si)
   TraceFunctionParam("%u",si);
   TraceFunctionParamListEnd();
 
-  if (conditional_pipe_solve_delegate(si).result_min==previous_move_has_not_solved)
+  conditional_pipe_solve_return_type const cond_result = conditional_pipe_solve_delegate(si);
+  if (cond_result.result_min==previous_move_has_not_solved
+      && cond_result.result_max==previous_move_has_not_solved)
     SETFLAG(goal_preprequisites_met[nbply],goal_doublemate);
 
   pipe_solve_delegate(si);
