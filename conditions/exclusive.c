@@ -308,25 +308,27 @@ void exclusive_chess_legality_tester_solve(slice_index si)
       set_solve_result(this_move_is_illegal);
     else
     {
-      boolean found_matching_case = false;
+      int found_matching_case = 0;
       conditional_pipe_solve_return_type const result = conditional_pipe_solve_delegate(temporary_hack_mate_tester[advers(trait[nbply])]);
       if (result.result_min<=previous_move_has_not_solved && result.result_max>=previous_move_has_not_solved)
       {
-        found_matching_case = true;
-        pipe_solve_delegate(si);      
+        found_matching_case = 1;
+        pipe_solve_delegate(si);
       }
       if (result.result_min<=this_move_is_illegal && result.result_max>=this_move_is_illegal)
       {
-        if (found_matching_case)
+        if (found_matching_case++)
           add_solve_result_possibility(this_move_is_illegal);
         else
-        {
-          found_matching_case = true;
           set_solve_result(this_move_is_illegal);
-        }
       }
-      if (!found_matching_case)
-        set_solve_result(previous_move_has_solved);
+      if (found_matching_case <= (result.result_max - result.result_min))
+      {
+        if (found_matching_case)
+          add_solve_result_possibility(previous_move_has_solved);
+        else
+          set_solve_result(previous_move_has_solved);
+      }
     }
   }
   else

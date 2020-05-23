@@ -25,25 +25,37 @@ void goal_reached_tester_solve(slice_index si)
   TraceFunctionParamListEnd();
 
   boolean found_matching_case = false;
-  switch (conditional_pipe_solve_delegate(si).result_min)
+  conditional_pipe_solve_return_type const result = conditional_pipe_solve_delegate(si);
+  if (result.result_min<=previous_move_has_solved && result.result_max>=previous_move_has_solved)
   {
-    case previous_move_is_illegal:
+    found_matching_case = true;
+    pipe_solve_delegate(si);
+  }
+  if (result.result_min<=previous_move_is_illegal && result.result_max>=previous_move_is_illegal)
+  {
+    if (found_matching_case)
+      add_solve_result_possibility(previous_move_is_illegal);
+    else
+    {
+      found_matching_case = true;
       set_solve_result(previous_move_is_illegal);
-      break;
-
-    case previous_move_has_not_solved:
-    case immobility_on_next_move:
+    }
+  }
+  if ((result.result_min<=previous_move_has_not_solved && result.result_max>=previous_move_has_not_solved) ||
+      (result.result_min<=immobility_on_next_move && result.result_max>=immobility_on_next_move))
+  {
+    if (found_matching_case)
+      add_solve_result_possibility(MOVE_HAS_NOT_SOLVED_LENGTH());
+    else
+    {
+      found_matching_case = true;
       set_solve_result(MOVE_HAS_NOT_SOLVED_LENGTH());
-      break;
-
-    case previous_move_has_solved:
-      pipe_solve_delegate(si);
-      break;
-
-    default:
-      assert(0);
-      set_solve_result(previous_move_is_illegal);
-      break;
+    }
+  }
+  if (!found_matching_case)
+  {
+    assert(0);
+    set_solve_result(previous_move_is_illegal);
   }
 
   TraceFunctionExit(__func__);
