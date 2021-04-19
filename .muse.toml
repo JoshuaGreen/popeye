@@ -1,0 +1,2 @@
+build = "make -f makefile.unx"
+tools = ["infer"]
