@@ -571,7 +571,7 @@ static boolean checked_by_knight(piece_on_square const * const final, square con
   return false;
 }
 
-static boolean possiblePosition(stored_position_type const *const initPosition, square const * const targetPos)
+static boolean feasible_ser_h_position(stored_position_type const *const initPosition, square const * const targetPos)
 {
   enum {
     a1, b1, c1, d1, e1, f1, g1, h1,
@@ -766,7 +766,7 @@ FOUND_CAPTURE:;
   // Restore whatever White pieces are needed to block checks.
   int num_blocks_needed = 0;
   square blocks[15][6]; // first index = line, second index = possibility along that line; h8 + 1 = sentinel
-  int num_block_poss[15] = {0};
+  int num_block_poss[15];
   int num_blocks_tmp;
   // If White castled, then various squares can't have been attacked.
   if (castle_kingside || castle_queenside)
@@ -1842,7 +1842,7 @@ void solve_target_position(slice_index si)
     }
   }
 
-  if (possiblePosition(&initial_position, boardnum)) {
+  if (feasible_ser_h_position(&initial_position, boardnum)) {
 
     /* solve the problem */
     ResetPosition(&initial_position);
