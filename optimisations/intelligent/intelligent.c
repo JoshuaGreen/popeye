@@ -1534,49 +1534,50 @@ FOUND_ROOK_MOVE:
     for (int col = 0; col < 8; ++col)
     {
       int const index = ((row * 8) + col);
-      if (!(((piece_never_moved | pawn_checks_white_king) >> index) & 1U))
+      if (!((pawn_checks_white_king >> index) & 1U))
       {
-        if (!(((piece_never_moved | pawn_checks_white_king) >> (index - 8)) & 1U))
+        if (!((piece_never_moved >> (index - 8)) & 1U))
+        {
           pawn_could_reach[index] |= pawn_could_reach[index - 8];
+          if (row == 6)
+            if (!((piece_never_moved >> (index - 16)) & 1U))
+              pawn_could_reach[index] |= pawn_could_reach[index - 16];
+        }
         if (col)
-          if ((initial[index - 9].color == White) && !(((piece_never_moved | pawn_checks_white_king) >> (index - 9)) & 1U))
+          if ((initial[index - 9].color == White) && !((piece_never_moved >> (index - 9)) & 1U))
             pawn_could_reach[index] |= pawn_could_reach[index - 9];
         if (col < 7)
-          if ((initial[index - 7].color == White) && !(((piece_never_moved | pawn_checks_white_king) >> (index - 7)) & 1U))
+          if ((initial[index - 7].color == White) && !((piece_never_moved >> (index - 7)) & 1U))
             pawn_could_reach[index] |= pawn_could_reach[index - 7];
       }
     }
-    if (row == 3)
-      // Handle an initial en passant capture.
-      for (int index = a4; index <= h4; ++index)
-        if (!(((piece_never_moved | pawn_checks_white_king) >> index) & 1U))
-          if ((initial[index].piece == Pawn) && (initial[index].color == Black))
-          {
-            if (index > a4)
-              if ((initial[index - 1].piece == Pawn) &&
-                  (initial[index - 1].color == White) &&
-                  (initial[index - 9].piece == Empty) &&
-                  (initial[index - 17].piece == Empty) &&
-                  !((piece_never_moved >> (index - 1)) & 1U) &&
-                  !((pawn_checks_white_king >> (index - 9) & 1U)))
-                pawn_could_reach[index] |= pawn_could_reach[index - 9];
-            if (index < h4)
-              if ((initial[index + 1].piece == Pawn) &&
-                  (initial[index + 1].color == White) &&
-                  (initial[index - 7].piece == Empty) &&
-                  (initial[index - 15].piece == Empty) &&
-                  !((piece_never_moved >> (index + 1)) & 1U) &&
-                  !((pawn_checks_white_king >> (index - 7) & 1U)))
-                pawn_could_reach[index] |= pawn_could_reach[index - 7];
-          }
   }
+  // Handle an initial en passant capture.
+  for (int index = a4; index <= h4; ++index)
+    if ((initial[index].piece == Pawn) && (initial[index].color == Black) && !((pawn_checks_white_king >> index) & 1U))
+    {
+      if (index > a4)
+        if ((initial[index - 1].piece == Pawn) &&
+            (initial[index - 1].color == White) &&
+            (initial[index - 9].piece == Empty) &&
+            (initial[index - 17].piece == Empty) &&
+            !((piece_never_moved >> (index - 1)) & 1U))
+          pawn_could_reach[index] |= pawn_could_reach[index - 9];
+      if (index < h4)
+        if ((initial[index + 1].piece == Pawn) &&
+            (initial[index + 1].color == White) &&
+            (initial[index - 7].piece == Empty) &&
+            (initial[index - 15].piece == Empty) &&
+            !((piece_never_moved >> (index + 1)) & 1U))
+          pawn_could_reach[index] |= pawn_could_reach[index - 7];
+    }
+
   // Where could Knights end up?
   boolean found_another_move;
   do {
     found_another_move = false;
-    unsigned long long const forbidden_squares = (piece_never_moved | knight_checks_white_king);
     for (int index = a1; index <= h8; ++index)
-      if (!(((piece_never_moved | knight_checks_white_king) >> index) & 1U))
+      if (!((knight_checks_white_king >> index) & 1U))
       {
         unsigned long long orig_poss = knight_could_reach[index];
         int const row = (index / 8);
@@ -1584,36 +1585,36 @@ FOUND_ROOK_MOVE:
         if (row)
         {
           if (col > 1)
-            if (!((forbidden_squares >> (index - 10)) & 1U))
+            if (!((piece_never_moved >> (index - 10)) & 1U))
               knight_could_reach[index] |= knight_could_reach[index - 10];
           if (col < 6)
-            if (!((forbidden_squares >> (index - 6)) & 1U))
+            if (!((piece_never_moved >> (index - 6)) & 1U))
               knight_could_reach[index] |= knight_could_reach[index - 6];
           if (row > 1)
           {
             if (col)
-              if (!((forbidden_squares >> (index - 17)) & 1U))
+              if (!((piece_never_moved >> (index - 17)) & 1U))
                 knight_could_reach[index] |= knight_could_reach[index - 17];
             if (col < 7)
-              if (!((forbidden_squares >> (index - 15)) & 1U))
+              if (!((piece_never_moved >> (index - 15)) & 1U))
                 knight_could_reach[index] |= knight_could_reach[index - 15];
           }
         }
         if (row < 7)
         {
           if (col > 1)
-            if (!((forbidden_squares >> (index + 6)) & 1U))
+            if (!((piece_never_moved >> (index + 6)) & 1U))
               knight_could_reach[index] |= knight_could_reach[index + 6];
           if (col < 6)
-            if (!((forbidden_squares >> (index + 10)) & 1U))
+            if (!((piece_never_moved >> (index + 10)) & 1U))
               knight_could_reach[index] |= knight_could_reach[index + 10];
           if (row < 6)
           {
             if (col)
-              if (!((forbidden_squares >> (index + 15)) & 1U))
+              if (!((piece_never_moved >> (index + 15)) & 1U))
                 knight_could_reach[index] |= knight_could_reach[index + 15];
             if (col < 7)
-              if (!((forbidden_squares >> (index + 17)) & 1U))
+              if (!((piece_never_moved >> (index + 17)) & 1U))
                 knight_could_reach[index] |= knight_could_reach[index + 17];
           }
         }
@@ -1621,315 +1622,143 @@ FOUND_ROOK_MOVE:
           found_another_move = true;
       }
   } while (found_another_move);
-  // Allow for a final Knight move delivering check.
-  for (int index = a1; index <= h8; ++index)
-    if (!(((piece_never_moved | knight_checks_white_king) >> index) & 1U))
-    {
-      int const row = (index / 8);
-      int const col = (index % 8);
-      if (row)
-      {
-        if (col > 1)
-          if (!((piece_never_moved >> (index - 10)) & 1U))
-            knight_could_reach[index] |= (1ULL << (index - 10));
-        if (col < 6)
-          if (!((piece_never_moved >> (index - 6)) & 1U))
-            knight_could_reach[index] |= (1ULL << (index - 6));
-        if (row > 1)
-        {
-          if (col)
-            if (!((piece_never_moved >> (index - 17)) & 1U))
-              knight_could_reach[index] |= (1ULL << (index - 17));
-          if (col < 7)
-            if (!((piece_never_moved >> (index - 15)) & 1U))
-              knight_could_reach[index] |= (1ULL << (index - 15));
-        }
-      }
-      if (row < 7)
-      {
-        if (col > 1)
-          if (!((piece_never_moved >> (index + 6)) & 1U))
-            knight_could_reach[index] |= (1ULL << (index + 6));
-        if (col < 6)
-          if (!((piece_never_moved >> (index + 10)) & 1U))
-            knight_could_reach[index] |= (1ULL << (index + 10));
-        if (row < 6)
-        {
-          if (col)
-            if (!((piece_never_moved >> (index + 15)) & 1U))
-              knight_could_reach[index] |= (1ULL << (index + 15));
-          if (col < 7)
-            if (!((piece_never_moved >> (index + 17)) & 1U))
-              knight_could_reach[index] |= (1ULL << (index + 17));
-        }
-      }
-    }
 
   // Where could Bishops end up?
   do
   {
     found_another_move = false;
     for (int index = a1; index <= h8; ++index)
-      if (!(((piece_never_moved | bishop_checks_white_king) >> index) & 1U))
+      if (!((bishop_checks_white_king >> index) & 1U))
       {
         unsigned long long orig_poss = bishop_could_reach[index];
         for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((bishop_checks_white_king >> poss_move) & 1U))
-            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+          bishop_could_reach[index] |= bishop_could_reach[poss_move];
         } 
         for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((bishop_checks_white_king >> poss_move) & 1U))
-            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+          bishop_could_reach[index] |= bishop_could_reach[poss_move];
         } 
         for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((bishop_checks_white_king >> poss_move) & 1U))
-            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+          bishop_could_reach[index] |= bishop_could_reach[poss_move];
         } 
         for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((bishop_checks_white_king >> poss_move) & 1U))
-            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+          bishop_could_reach[index] |= bishop_could_reach[poss_move];
         } 
         if (bishop_could_reach[index] != orig_poss)
           found_another_move = true;
       }
   } while (found_another_move);
-  // Allow for a final Bishop move delivering check.
-  for (int index = a1; index <= h8; ++index)
-    if (!(((piece_never_moved | bishop_checks_white_king) >> index) & 1U))
-    {
-      for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        bishop_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        bishop_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        bishop_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        bishop_could_reach[index] |= (1ULL << poss_move);
-      }
-    }
 
   // Where could Rooks end up?
   do
   {
     found_another_move = false;
     for (int index = a1; index <= h8; ++index)
-      if (!(((piece_never_moved | rook_checks_white_king) >> index) & 1U))
+      if (!((rook_checks_white_king >> index) & 1U))
       {
         unsigned long long orig_poss = rook_could_reach[index];
         for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((rook_checks_white_king >> poss_move) & 1U))
-            rook_could_reach[index] |= rook_could_reach[poss_move];
+          rook_could_reach[index] |= rook_could_reach[poss_move];
         } 
         for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((rook_checks_white_king >> poss_move) & 1U))
-            rook_could_reach[index] |= rook_could_reach[poss_move];
+          rook_could_reach[index] |= rook_could_reach[poss_move];
         } 
         for (int poss_move = index; (poss_move % 8);)
         {
           --poss_move;
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((rook_checks_white_king >> poss_move) & 1U))
-            rook_could_reach[index] |= rook_could_reach[poss_move];
+          rook_could_reach[index] |= rook_could_reach[poss_move];
         } 
         for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((rook_checks_white_king >> poss_move) & 1U))
-            rook_could_reach[index] |= rook_could_reach[poss_move];
+          rook_could_reach[index] |= rook_could_reach[poss_move];
         }
         if (rook_could_reach[index] != orig_poss)
           found_another_move = true;
       }
   } while (found_another_move);
-  // Allow for a final Rook move delivering check.
-  for (int index = a1; index <= h8; ++index)
-    if (!(((piece_never_moved | rook_checks_white_king) >> index) & 1U))
-    {
-      for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        rook_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        rook_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = index; (poss_move % 8);)
-      {
-        --poss_move;
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        rook_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        rook_could_reach[index] |= (1ULL << poss_move);
-      }
-    }
 
   // Where could Queens end up?
   do
   {
     found_another_move = false;
     for (int index = a1; index <= h8; ++index)
-      if (!(((piece_never_moved | queen_checks_white_king) >> index) & 1U))
+      if (!((queen_checks_white_king >> index) & 1U))
       {
         unsigned long long orig_poss = queen_could_reach[index];
         for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         } 
         for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         } 
         for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         } 
         for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         }
         for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         } 
         for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         } 
         for (int poss_move = index; (poss_move % 8);)
         {
           --poss_move;
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         } 
         for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
-          if (!((queen_checks_white_king >> poss_move) & 1U))
-            queen_could_reach[index] |= queen_could_reach[poss_move];
+          queen_could_reach[index] |= queen_could_reach[poss_move];
         }
         if (queen_could_reach[index] != orig_poss)
           found_another_move = true;
       }
   } while (found_another_move);
-  // Allow for a final Queen move delivering check.
-  for (int index = a1; index <= h8; ++index)
-    if (!(((piece_never_moved | queen_checks_white_king) >> index) & 1U))
-    {
-      for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      }
-      for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = index; (poss_move % 8);)
-      {
-        --poss_move;
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      } 
-      for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
-      {
-        if ((piece_never_moved >> poss_move) & 1U)
-          break;
-        queen_could_reach[index] |= (1ULL << poss_move);
-      }
-    }
 
   // Where could the King end up?
   do
@@ -2001,14 +1830,12 @@ FOUND_ROOK_MOVE:
           {
             boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
-            {
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((knight_could_reach[promote] >> index) & 1U)
                 {
                   found_promotion = true;
                   break;
                 }
-            }
             if (!found_promotion)
               return false;
           }
@@ -2023,14 +1850,12 @@ FOUND_ROOK_MOVE:
           {
             boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
-            {
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((bishop_could_reach[promote] >> index) & 1U)
                 {
                   found_promotion = true;
                   break;
                 }
-            }
             if (!found_promotion)
               return false;
           }
@@ -2045,14 +1870,12 @@ FOUND_ROOK_MOVE:
           {
             boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
-            {
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((rook_could_reach[promote] >> index) & 1U)
                 {
                   found_promotion = true;
                   break;
                 }
-            }
             if (!found_promotion)
               return false;
           }
@@ -2067,14 +1890,12 @@ FOUND_ROOK_MOVE:
           {
             boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
-            {
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((queen_could_reach[promote] >> index) & 1U)
                 {
                   found_promotion = true;
                   break;
                 }
-            }
             if (!found_promotion)
               return false;
           }
@@ -2085,12 +1906,18 @@ FOUND_ROOK_MOVE:
           break;
         case nr_piece_walks:
           if (!((pawn_could_reach[orig_square] >> index) & 1U))
+          {
+            boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
-              if (((pawn_could_reach[orig_square] >> promote) |
+              if (((pawn_could_reach[orig_square] >> promote) &
                    (promoted_piece_could_reach[promote] >> index)) & 1U)
-                  goto FOUND_PROMOTION;
-          return false;
-FOUND_PROMOTION:
+              {
+                found_promotion = true;
+                break;
+              }
+            if (!found_promotion)
+              return false;
+          }
           break;
         default:
           break;
@@ -2240,7 +2067,7 @@ void solve_target_position(slice_index si)
     trace_target_position(target_position,CapturesLeft[1]);
 #endif
 
-    // pipe_solve_delegate(si);
+    pipe_solve_delegate(si);
 
     if (solve_result<=MOVE_HAS_SOLVED_LENGTH())
       solutions_found = true;
