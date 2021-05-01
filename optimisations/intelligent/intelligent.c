@@ -46,10 +46,6 @@
 #include "debugging/assert.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-
-extern char * strdup(const char *);
 
 typedef unsigned int index_type;
 
@@ -73,9 +69,6 @@ unsigned int CapturesLeft[maxply+1];
 unsigned int PieceId2index[MaxPieceId+1];
 
 unsigned int nr_reasons_for_staying_empty[maxsquare+4];
-
-char ** seen_target_positions = NULL;
-size_t num_seen_target_positions = 0;
 
 typedef struct
 {
@@ -286,136 +279,6 @@ static square orig_square_of_piece(square const sq_in_target_pos)
   Flags const flags = being_solved.spec[sq_in_target_pos];
   square const orig_square = GetPositionInDiagram(flags) - 200;
   return ((orig_square / 24) * 8) + (orig_square % 24);
-}
-
-static void get_forsyth(square const * const bnp, char * const buffer)
-{
-  int new_white_square = 64;
-  int old_white_square = 64;
-  int num_black_pieces = 0;
-  piece_walk_type moved_piece = Empty;
-
-  for (int index = 0; index < 64; ++index)
-  {
-    piece_walk_type const piece_on_square = get_walk_of_piece_on_square(bnp[index]);
-    if (piece_on_square != Empty)
-    {
-      if (TSTFLAG(being_solved.spec[bnp[index]], White))
-      {
-        int const orig_square = orig_square_of_piece(bnp[index]);
-        if (orig_square != index)
-        {
-          new_white_square = index;
-          old_white_square = orig_square;
-          moved_piece = piece_on_square;
-        }
-      }
-      else
-        ++num_black_pieces;
-    }
-  }
-
-  int num_empty = 0;
-  unsigned int write_index = 0;
-  for (int row = 7; row >= 0; --row)
-  {
-    for (int col = 0; col < 8; ++col)
-    {
-      int const index = ((8 * row) + col);
-      piece_walk_type piece;
-      if (index == new_white_square)
-        if (num_black_pieces < 10)
-          piece = Invalid;
-        else
-          piece = Empty;
-      else if (index == old_white_square)
-        piece = moved_piece;
-      else
-        piece = get_walk_of_piece_on_square(bnp[index]);
-
-      if (piece == Empty)
-        ++num_empty;
-      else
-      {
-        if (num_empty)
-        {
-          buffer[write_index++] = (char) ('0' + num_empty);
-          num_empty = 0;
-        }
-        unsigned char symbol;
-        switch (piece)
-        {
-          case Pawn:
-            symbol = 'p';
-            break;
-          case Rook:
-            symbol = 'r';
-            break;
-          case Knight:
-            symbol = 's';
-            break;
-          case Bishop:
-            symbol = 'b';
-            break;
-          case Queen:
-            symbol = 'q';
-            break;
-          case King:
-            symbol = 'k';
-            break;
-          default:
-            symbol = '?';
-        }
-        if (symbol != '?')
-          if ((index == old_white_square) || TSTFLAG(being_solved.spec[bnp[index]], White))
-            symbol = (unsigned char) toupper(symbol);
-        buffer[write_index++] = (char) symbol;
-      }
-    }
-    if (num_empty)
-    {
-      buffer[write_index++] = (char) ('0' + num_empty);
-      num_empty = 0;
-    }
-    if (row)
-      buffer[write_index++] = '/';
-  }
-  buffer[write_index] = '\0';
-}
-
-static void free_seen_target_positions(void)
-{
-  while (num_seen_target_positions)
-    free(seen_target_positions[--num_seen_target_positions]);
-  free(seen_target_positions);
-  seen_target_positions = NULL;
-}
-
-static boolean is_new_forsyth(char const * const forsyth)
-{
-  for (size_t i = 0; i < num_seen_target_positions; ++i)
-    if (!strcmp(seen_target_positions[i], forsyth))
-      return false;
-
-  if (num_seen_target_positions < ((((size_t) -1) >> 1) / sizeof(char *)))
-  {
-    char * tmp = strdup(forsyth);
-    if (tmp)
-    {
-      char ** const tmp2 = (char **) realloc(seen_target_positions, (num_seen_target_positions + 1) * sizeof tmp);
-      if (tmp2)
-      {
-        if (!num_seen_target_positions)
-          atexit(&free_seen_target_positions);
-        tmp2[num_seen_target_positions++] = tmp;
-        seen_target_positions = tmp2;
-      }
-      else
-        free(tmp);
-    }
-  }
-
-  return true;
 }
 
 typedef struct {
@@ -771,7 +634,7 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
         initial[index].color = Black;
     }
   }
-  
+
   // ensure that White's move was legal
   boolean castle_kingside = false;
   boolean castle_queenside = false;
@@ -1429,7 +1292,7 @@ FOUND_CAPTURE:;
                   if (!((forbidden_squares >> (index + 1)) & 1U))
                     break;
               }
-              piece_never_moved |= (1ULL << index);  
+              piece_never_moved |= (1ULL << index);
               break;
             case Queen:
             case Bishop:
@@ -1439,29 +1302,29 @@ FOUND_CAPTURE:;
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_BISHOP_MOVE;
-              } 
+              }
               for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
               {
                 if ((piece_never_moved >> poss_move) & 1U)
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_BISHOP_MOVE;
-              } 
+              }
               for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
               {
                 if ((piece_never_moved >> poss_move) & 1U)
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_BISHOP_MOVE;
-              } 
+              }
               for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
               {
                 if ((piece_never_moved >> poss_move) & 1U)
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_BISHOP_MOVE;
-              } 
-              if (p == Bishop)            
+              }
+              if (p == Bishop)
               {
                 piece_never_moved |= (1ULL << index);
 FOUND_BISHOP_MOVE:
@@ -1475,14 +1338,14 @@ FOUND_BISHOP_MOVE:
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_ROOK_MOVE;
-              } 
+              }
               for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
               {
                 if ((piece_never_moved >> poss_move) & 1U)
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_ROOK_MOVE;
-              } 
+              }
               for (int poss_move = index; (poss_move % 8);)
               {
                 --poss_move;
@@ -1490,14 +1353,14 @@ FOUND_BISHOP_MOVE:
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_ROOK_MOVE;
-              } 
+              }
               for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
               {
                 if ((piece_never_moved >> poss_move) & 1U)
                   break;
                 if (!((checking_squares >> poss_move) & 1U))
                   goto FOUND_ROOK_MOVE;
-              } 
+              }
               piece_never_moved |= (1ULL << index);
 FOUND_ROOK_MOVE:
               break;
@@ -1637,25 +1500,25 @@ FOUND_ROOK_MOVE:
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           bishop_could_reach[index] |= bishop_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           bishop_could_reach[index] |= bishop_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           bishop_could_reach[index] |= bishop_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           bishop_could_reach[index] |= bishop_could_reach[poss_move];
-        } 
+        }
         if (bishop_could_reach[index] != orig_poss)
           found_another_move = true;
       }
@@ -1674,20 +1537,20 @@ FOUND_ROOK_MOVE:
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           rook_could_reach[index] |= rook_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           rook_could_reach[index] |= rook_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = index; (poss_move % 8);)
         {
           --poss_move;
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           rook_could_reach[index] |= rook_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
         {
           if ((piece_never_moved >> poss_move) & 1U)
@@ -1712,19 +1575,19 @@ FOUND_ROOK_MOVE:
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           queen_could_reach[index] |= queen_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           queen_could_reach[index] |= queen_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           queen_could_reach[index] |= queen_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
         {
           if ((piece_never_moved >> poss_move) & 1U)
@@ -1736,20 +1599,20 @@ FOUND_ROOK_MOVE:
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           queen_could_reach[index] |= queen_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
         {
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           queen_could_reach[index] |= queen_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = index; (poss_move % 8);)
         {
           --poss_move;
           if ((piece_never_moved >> poss_move) & 1U)
             break;
           queen_could_reach[index] |= queen_could_reach[poss_move];
-        } 
+        }
         for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
         {
           if ((piece_never_moved >> poss_move) & 1U)
@@ -1955,84 +1818,6 @@ void solve_target_position(slice_index si)
   }
 
   if (possiblePosition(&initial_position, boardnum)) {
-    char forsyth[72];
-    get_forsyth(boardnum, forsyth);
-    if (is_new_forsyth(forsyth))
-    {
-      protocol_fprintf(stdout, "\nTarget position:\n");
-      for (int row = 7; row >= 0; --row)
-      {
-        for (int col = 0; col < 8; ++col)
-        {
-          int const index = (row * 8) + col;
-          piece_walk_type const type = get_walk_of_piece_on_square(boardnum[index]);
-          if (type==Empty || type==Invalid)
-          {
-            protocol_fprintf(stdout, " -");
-          } else {
-            Flags const flags = being_solved.spec[boardnum[index]];
-            Side const cur_side = TSTFLAG(flags,White) ? White : Black;
-            int myPiece;
-            switch (type) {
-              case King:
-                myPiece = 'K';
-                break;
-              case Pawn:
-                myPiece = 'P';
-                break;
-              case Queen:
-                myPiece = 'Q';
-                break;
-              case Knight:
-                myPiece = 'S';
-                break;
-              case Rook:
-                myPiece = 'R';
-                break;
-              case Bishop:
-                myPiece = 'B';
-                break;
-              default:
-                myPiece = '?';
-            }
-            if (cur_side == Black)
-              myPiece = tolower(myPiece);
-            protocol_fprintf(stdout, " %c", myPiece);
-          }
-        }
-        protocol_fputc('\n', stdout);
-      }
-      protocol_fputc('\n', stdout);
-
-#if 0
-      unsigned int q_index = 100;
-      unsigned int q_row = 0;
-      unsigned int cur_row = 0;
-      for (unsigned int i = 0; forsyth[i]; ++i)
-        if (forsyth[i] == '?')
-        {
-          q_index = i;
-          q_row = cur_row;
-          break;
-        }
-        else if (forsyth[i] == '/')
-          ++cur_row;
-
-      protocol_fputc('\n', stdout);
-      if (q_index == 100)
-        protocol_fprintf(stdout, "forsyth %s\n", forsyth);
-      else
-      {
-        char const black_pieces[5] = {'p', 'r', 's', 'b', 'q'};
-        for (unsigned int i = ((q_row == 7) || !q_row); i < sizeof black_pieces; ++i)
-        {
-          forsyth[q_index] = black_pieces[i];
-          protocol_fprintf(stdout, "forsyth %s\n", forsyth);
-        }
-        forsyth[q_index] = '?';
-      }
-#endif
-    }
 
     /* solve the problem */
     ResetPosition(&initial_position);
@@ -2049,9 +1834,7 @@ void solve_target_position(slice_index si)
 
   }
   else
-  {
     ResetPosition(&initial_position);
-  }
 
   /* reset the old mating position */
   {
