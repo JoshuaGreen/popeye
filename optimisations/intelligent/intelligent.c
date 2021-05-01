@@ -588,8 +588,8 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
   piece_on_square initial[64];
   piece_on_square final[64];
   unsigned long long seen_black_pieces = 0;
-  square bKPosition;
-  square wKPosition;
+  square bKPosition = (h8 + 1);
+  square wKPosition = (h8 + 1);
   for (int index = a1; index <= h8; ++index)
   {
     piece_walk_type p = get_walk_of_piece_on_square(targetPos[index]);
@@ -708,10 +708,12 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
               square_must_remain_open |= (1ULL << orig_square);
             }
           }
-          break;
+          goto FOUND_MOVED_WHITE_PIECE;
         }
       }
     }
+    return false; // TODO: Why is this reachable?
+FOUND_MOVED_WHITE_PIECE:;
   }
 
   // retract White's last move
@@ -893,87 +895,90 @@ FOUND_CAPTURE:;
     }
   }
   // Black can't have been in check.
-  if (checked_by_knight(final, bKPosition, Black))
-    return false;
-  num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
+  if (bKPosition != (h8 + 1))
   {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_lower_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_down(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_lower_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
-  }
-  num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
-  if (num_blocks_tmp < 0)
-    return false;
-  if (num_blocks_tmp)
-  {
-    if (num_blocks_tmp == 1)
-      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
-    else
-      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    if (checked_by_knight(final, bKPosition, Black))
+      return false;
+    num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_lower_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_down(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_lower_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
   }
   // TODO: What to do about the num_blocks_needed lines on which there are multiple possible blocks?
 
@@ -1053,74 +1058,81 @@ FOUND_CAPTURE:;
           if (col < 7)
             guarded_by_white |= (1ULL << (sq + 1));
           break;
-        default:
+        case Dummy:
           break;
+        default:
+          assert(0);
+          return false;
       }
     }
 
   // What squares must attack the wK?
-  int const wKRow = (wKPosition / 8);
-  int const wKCol = (wKPosition % 8);
   unsigned long long rook_checks_white_king = 0;
   unsigned long long knight_checks_white_king = 0;
   unsigned long long pawn_checks_white_king = 0;
   unsigned long long bishop_checks_white_king = 0;
-  if (wKRow)
+  unsigned long long queen_checks_white_king = 0;
+  if (wKPosition != (h8 + 1))
   {
-    rook_checks_white_king |= (1ULL << (wKPosition - 8));
+    int const wKRow = (wKPosition / 8);
+    int const wKCol = (wKPosition % 8);
+    if (wKRow)
+    {
+      rook_checks_white_king |= (1ULL << (wKPosition - 8));
+      if (wKCol)
+      {
+        bishop_checks_white_king |= (1ULL << (wKPosition - 9));
+        if (wKCol > 1)
+          knight_checks_white_king |= (1ULL << (wKPosition - 10));
+      }
+      if (wKCol < 7)
+      {
+        bishop_checks_white_king |= (1ULL << (wKPosition - 7));
+        if (wKCol < 6)
+          knight_checks_white_king |= (1ULL << (wKPosition - 6));
+      }
+      if (wKRow > 1)
+      {
+        if (wKCol)
+          knight_checks_white_king |= (1ULL << (wKPosition - 17));
+        if (wKCol < 7)
+          knight_checks_white_king |= (1ULL << (wKPosition - 15));
+      }
+    }
+    if (wKRow < 7)
+    {
+      rook_checks_white_king |= (1ULL << (wKPosition + 8));
+      if (wKCol)
+      {
+        pawn_checks_white_king |= (1ULL << (wKPosition + 7));
+        if (wKCol > 1)
+          knight_checks_white_king |= (1ULL << (wKPosition + 6));
+      }
+      if (wKCol < 7)
+      {
+        pawn_checks_white_king |= (1ULL << (wKPosition + 9));
+        if (wKCol < 6)
+          knight_checks_white_king |= (1ULL << (wKPosition + 10));
+      }
+      if (wKRow < 6)
+      {
+        if (wKCol)
+          knight_checks_white_king |= (1ULL << (wKPosition + 15));
+        if (wKCol < 7)
+          knight_checks_white_king |= (1ULL << (wKPosition + 17));
+      }
+    }
     if (wKCol)
     {
-      bishop_checks_white_king |= (1ULL << (wKPosition - 9));
-      if (wKCol > 1)
-        knight_checks_white_king |= (1ULL << (wKPosition - 10));
+      rook_checks_white_king |= (1ULL << (wKPosition - 1));
     }
     if (wKCol < 7)
     {
-      bishop_checks_white_king |= (1ULL << (wKPosition - 7));
-      if (wKCol < 6)
-        knight_checks_white_king |= (1ULL << (wKPosition - 6));
+      rook_checks_white_king |= (1ULL << (wKPosition + 1));
     }
-    if (wKRow > 1)
-    {
-      if (wKCol)
-        knight_checks_white_king |= (1ULL << (wKPosition - 17));
-      if (wKCol < 7)
-        knight_checks_white_king |= (1ULL << (wKPosition - 15));
-    }
+    bishop_checks_white_king |= pawn_checks_white_king;
+    queen_checks_white_king = (bishop_checks_white_king | rook_checks_white_king);
   }
-  if (wKRow < 7)
-  {
-    rook_checks_white_king |= (1ULL << (wKPosition + 8));
-    if (wKCol)
-    {
-      pawn_checks_white_king |= (1ULL << (wKPosition + 7));
-      if (wKCol > 1)
-        knight_checks_white_king |= (1ULL << (wKPosition + 6));
-    }
-    if (wKCol < 7)
-    {
-      pawn_checks_white_king |= (1ULL << (wKPosition + 9));
-      if (wKCol < 6)
-        knight_checks_white_king |= (1ULL << (wKPosition + 10));
-    }
-    if (wKRow < 6)
-    {
-      if (wKCol)
-        knight_checks_white_king |= (1ULL << (wKPosition + 15));
-      if (wKCol < 7)
-        knight_checks_white_king |= (1ULL << (wKPosition + 17));
-    }
-  }
-  if (wKCol)
-  {
-    rook_checks_white_king |= (1ULL << (wKPosition - 1));
-  }
-  if (wKCol < 7)
-  {
-    rook_checks_white_king |= (1ULL << (wKPosition + 1));
-  }
-  bishop_checks_white_king |= pawn_checks_white_king;
-  unsigned long long const queen_checks_white_king = (bishop_checks_white_king | rook_checks_white_king);
 
   // Determine which pieces never moved.
   unsigned long long piece_never_moved = 0;
@@ -1155,8 +1167,12 @@ FOUND_CAPTURE:;
           case Queen:
             checking_squares = queen_checks_white_king;
             break;
-          default:
+          case Dummy:
             checking_squares = 0;
+            break;
+          default:
+            assert(0);
+            return false;
         }
         if (!(((piece_never_moved | checking_squares) >> index) & 1U))
         {
@@ -1364,8 +1380,12 @@ FOUND_BISHOP_MOVE:
               piece_never_moved |= (1ULL << index);
 FOUND_ROOK_MOVE:
               break;
-            default:
+            case Dummy:
+              piece_never_moved |= (1ULL << index);
               break;
+            default:
+              assert(0);
+              return false;
           }
         }
       }
@@ -1757,8 +1777,13 @@ FOUND_QUEEN_PROMOTION:;
 FOUND_GENERIC_PROMOTION:;
           }
           break;
-        default:
+        case Dummy:
+          if (orig_square != index)
+            return false;
           break;
+        default:
+          assert(0);
+          return false;
       }
     }
 
