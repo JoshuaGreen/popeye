@@ -1292,6 +1292,7 @@ FOUND_CAPTURE:;
           case King:
           case Queen:
             checking_squares = queen_checks_white_king;
+            break;
           default:
             checking_squares = 0;
         }
@@ -1467,6 +1468,7 @@ FOUND_CAPTURE:;
 FOUND_BISHOP_MOVE:
                 break;
               }
+              // intentional fall-through
             case Rook:
               for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
               {
@@ -1937,7 +1939,7 @@ FOUND_ROOK_MOVE:
     for (int index = a1; index <= h8; ++index)
       if (!((forbidden_squares >> index) & 1U))
       {
-        unsigned long long orig_poss = queen_could_reach[index];
+        unsigned long long orig_poss = king_could_reach[index];
         int const row = (index / 8);
         int const col = (index % 8);
         if (row)
