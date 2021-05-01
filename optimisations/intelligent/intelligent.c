@@ -771,7 +771,7 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
         initial[index].color = Black;
     }
   }
-
+  
   // ensure that White's move was legal
   boolean castle_kingside = false;
   boolean castle_queenside = false;
@@ -779,7 +779,6 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
   int moved_white_piece_orig_square;
   int moved_white_piece_new_square;
   unsigned long long square_must_remain_open;
-
   if ((wKPosition == g1) && (final[g1].orig_square == e1))
   {
     if ((final[f1].piece != Rook) || (final[f1].color != White) || (final[f1].orig_square != h1))
@@ -820,7 +819,7 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
           moved_white_piece_new_square = index;
 
           // a White line piece can't have jumped over anything
-          piece_walk_type const p = initial[index].piece;
+          piece_walk_type const p = initial[orig_square].piece;
           if (p != Knight)
           {
             // line pieces cannot have jumped over anything
@@ -897,7 +896,7 @@ static boolean possiblePosition(stored_position_type const *const initPosition, 
   if (pawn_capture)
     return false;
 FOUND_CAPTURE:;
-  // TODO: Should we consider the possibility that White's move was an en passant capture?
+  // TODO: Should we consider the possibility that White's move was an en passant capture justified by retrograde analysis?
 
   // Restore whatever White pieces are needed to block checks.
   int num_blocks_needed = 0;
@@ -1517,7 +1516,6 @@ FOUND_ROOK_MOVE:
   unsigned long long rook_could_reach[64];
   unsigned long long queen_could_reach[64];
   unsigned long long king_could_reach[64];
-  unsigned long long promoted_piece_could_reach[64]; // = knight | bishop | rook | queen
   for (int index = a1; index <= h8; ++index)
   {
     unsigned long long cur_bit = (1ULL << index);
@@ -1526,7 +1524,10 @@ FOUND_ROOK_MOVE:
     bishop_could_reach[index] = cur_bit;
     rook_could_reach[index] = cur_bit;
     queen_could_reach[index] = cur_bit;
-    king_could_reach[index] = cur_bit;
+    if ((guarded_by_white >> index) & 1U)
+      king_could_reach[index] = 0;
+    else
+      king_could_reach[index] = cur_bit;
   }
   // Where could pawns end up?
   for (int row = 1; row < 7; ++row)
@@ -1773,38 +1774,32 @@ FOUND_ROOK_MOVE:
         int const col = (index % 8);
         if (row)
         {
-          if (!((forbidden_squares >> (index - 8)) & 1U))
-            king_could_reach[index] |= king_could_reach[index - 8];
+          king_could_reach[index] |= king_could_reach[index - 8];
           if (col)
-            if (!((forbidden_squares >> (index - 9)) & 1U))
-              king_could_reach[index] |= king_could_reach[index - 9];
+            king_could_reach[index] |= king_could_reach[index - 9];
           if (col < 7)
-            if (!((forbidden_squares >> (index - 7)) & 1U))
-              king_could_reach[index] |= king_could_reach[index - 7];
+            king_could_reach[index] |= king_could_reach[index - 7];
         }
         if (row < 7)
         {
-          if (!((forbidden_squares >> (index + 8)) & 1U))
-            king_could_reach[index] |= king_could_reach[index + 8];
+          king_could_reach[index] |= king_could_reach[index + 8];
           if (col)
-            if (!((forbidden_squares >> (index + 7)) & 1U))
-              king_could_reach[index] |= king_could_reach[index + 7];
+            king_could_reach[index] |= king_could_reach[index + 7];
           if (col < 7)
-            if (!((forbidden_squares >> (index + 9)) & 1U))
-              king_could_reach[index] |= king_could_reach[index + 9];
+            king_could_reach[index] |= king_could_reach[index + 9];
         }
         if (col)
-          if (!((forbidden_squares >> (index - 1)) & 1U))
-            king_could_reach[index] |= king_could_reach[index - 1];
+          king_could_reach[index] |= king_could_reach[index - 1];
         if (col < 7)
-          if (!((forbidden_squares >> (index + 1)) & 1U))
-            king_could_reach[index] |= king_could_reach[index + 1];
+          king_could_reach[index] |= king_could_reach[index + 1];
+
         if (king_could_reach[index] != orig_poss)
           found_another_move = true;
       }
   } while (found_another_move);
 
   // Promoted pieces could be anything.
+  unsigned long long promoted_piece_could_reach[64]; // = knight | bishop | rook | queen
   for (int index = a1; index <= h8; ++index)
     promoted_piece_could_reach[index] = (knight_could_reach[index] | bishop_could_reach[index] | rook_could_reach[index] | queen_could_reach[index]);
 
@@ -1828,16 +1823,12 @@ FOUND_ROOK_MOVE:
           }
           else
           {
-            boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((knight_could_reach[promote] >> index) & 1U)
-                {
-                  found_promotion = true;
-                  break;
-                }
-            if (!found_promotion)
-              return false;
+                  goto FOUND_KNIGHT_PROMOTION;
+            return false;
+FOUND_KNIGHT_PROMOTION:;
           }
           break;
         case Bishop:
@@ -1848,16 +1839,12 @@ FOUND_ROOK_MOVE:
           }
           else
           {
-            boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((bishop_could_reach[promote] >> index) & 1U)
-                {
-                  found_promotion = true;
-                  break;
-                }
-            if (!found_promotion)
-              return false;
+                  goto FOUND_BISHOP_PROMOTION;
+            return false;
+FOUND_BISHOP_PROMOTION:;
           }
           break;
         case Rook:
@@ -1868,16 +1855,12 @@ FOUND_ROOK_MOVE:
           }
           else
           {
-            boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((rook_could_reach[promote] >> index) & 1U)
-                {
-                  found_promotion = true;
-                  break;
-                }
-            if (!found_promotion)
-              return false;
+                  goto FOUND_ROOK_PROMOTION;
+            return false;
+FOUND_ROOK_PROMOTION:;
           }
           break;
         case Queen:
@@ -1888,16 +1871,12 @@ FOUND_ROOK_MOVE:
           }
           else
           {
-            boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
               if ((pawn_could_reach[orig_square] >> promote) & 1U)
                 if ((queen_could_reach[promote] >> index) & 1U)
-                {
-                  found_promotion = true;
-                  break;
-                }
-            if (!found_promotion)
-              return false;
+                  goto FOUND_QUEEN_PROMOTION;
+            return false;
+FOUND_QUEEN_PROMOTION:;
           }
           break;
         case King:
@@ -1907,16 +1886,12 @@ FOUND_ROOK_MOVE:
         case nr_piece_walks:
           if (!((pawn_could_reach[orig_square] >> index) & 1U))
           {
-            boolean found_promotion = false;
             for (int promote = a1; promote <= h1; ++promote)
-              if (((pawn_could_reach[orig_square] >> promote) &
-                   (promoted_piece_could_reach[promote] >> index)) & 1U)
-              {
-                found_promotion = true;
-                break;
-              }
-            if (!found_promotion)
-              return false;
+              if ((pawn_could_reach[orig_square] >> promote) & 1U)
+                if ((promoted_piece_could_reach[promote] >> index) & 1U)
+                  goto FOUND_GENERIC_PROMOTION;
+            return false;
+FOUND_GENERIC_PROMOTION:;
           }
           break;
         default:
@@ -1984,7 +1959,7 @@ void solve_target_position(slice_index si)
     get_forsyth(boardnum, forsyth);
     if (is_new_forsyth(forsyth))
     {
-      protocol_fprintf(stdout, "\nTarget position:");
+      protocol_fprintf(stdout, "\nTarget position:\n");
       for (int row = 7; row >= 0; --row)
       {
         for (int col = 0; col < 8; ++col)
