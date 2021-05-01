@@ -46,6 +46,10 @@
 #include "debugging/assert.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+
+extern char * strdup(const char *);
 
 typedef unsigned int index_type;
 
@@ -69,6 +73,9 @@ unsigned int CapturesLeft[maxply+1];
 unsigned int PieceId2index[MaxPieceId+1];
 
 unsigned int nr_reasons_for_staying_empty[maxsquare+4];
+
+char ** seen_target_positions = NULL;
+size_t num_seen_target_positions = 0;
 
 typedef struct
 {
@@ -274,6 +281,1823 @@ static piece_usage find_piece_usage(PieceIdType id)
 }
 #endif
 
+static square orig_square_of_piece(square const sq_in_target_pos)
+{
+  Flags const flags = being_solved.spec[sq_in_target_pos];
+  square const orig_square = GetPositionInDiagram(flags) - 200;
+  return ((orig_square / 24) * 8) + (orig_square % 24);
+}
+
+static void get_forsyth(square const * const bnp, char * const buffer)
+{
+  int new_white_square = 64;
+  int old_white_square = 64;
+  int num_black_pieces = 0;
+  piece_walk_type moved_piece = Empty;
+
+  for (int index = 0; index < 64; ++index)
+  {
+    piece_walk_type const piece_on_square = get_walk_of_piece_on_square(bnp[index]);
+    if (piece_on_square != Empty)
+    {
+      if (TSTFLAG(being_solved.spec[bnp[index]], White))
+      {
+        int const orig_square = orig_square_of_piece(bnp[index]);
+        if (orig_square != index)
+        {
+          new_white_square = index;
+          old_white_square = orig_square;
+          moved_piece = piece_on_square;
+        }
+      }
+      else
+        ++num_black_pieces;
+    }
+  }
+
+  int num_empty = 0;
+  unsigned int write_index = 0;
+  for (int row = 7; row >= 0; --row)
+  {
+    for (int col = 0; col < 8; ++col)
+    {
+      int const index = ((8 * row) + col);
+      piece_walk_type piece;
+      if (index == new_white_square)
+        if (num_black_pieces < 10)
+          piece = Invalid;
+        else
+          piece = Empty;
+      else if (index == old_white_square)
+        piece = moved_piece;
+      else
+        piece = get_walk_of_piece_on_square(bnp[index]);
+
+      if (piece == Empty)
+        ++num_empty;
+      else
+      {
+        if (num_empty)
+        {
+          buffer[write_index++] = (char) ('0' + num_empty);
+          num_empty = 0;
+        }
+        unsigned char symbol;
+        switch (piece)
+        {
+          case Pawn:
+            symbol = 'p';
+            break;
+          case Rook:
+            symbol = 'r';
+            break;
+          case Knight:
+            symbol = 's';
+            break;
+          case Bishop:
+            symbol = 'b';
+            break;
+          case Queen:
+            symbol = 'q';
+            break;
+          case King:
+            symbol = 'k';
+            break;
+          default:
+            symbol = '?';
+        }
+        if (symbol != '?')
+          if ((index == old_white_square) || TSTFLAG(being_solved.spec[bnp[index]], White))
+            symbol = (unsigned char) toupper(symbol);
+        buffer[write_index++] = (char) symbol;
+      }
+    }
+    if (num_empty)
+    {
+      buffer[write_index++] = (char) ('0' + num_empty);
+      num_empty = 0;
+    }
+    if (row)
+      buffer[write_index++] = '/';
+  }
+  buffer[write_index] = '\0';
+}
+
+static void free_seen_target_positions(void)
+{
+  while (num_seen_target_positions)
+    free(seen_target_positions[--num_seen_target_positions]);
+  free(seen_target_positions);
+  seen_target_positions = NULL;
+}
+
+static boolean is_new_forsyth(char const * const forsyth)
+{
+  for (size_t i = 0; i < num_seen_target_positions; ++i)
+    if (!strcmp(seen_target_positions[i], forsyth))
+      return false;
+
+  if (num_seen_target_positions < ((((size_t) -1) >> 1) / sizeof(char *)))
+  {
+    char * tmp = strdup(forsyth);
+    if (tmp)
+    {
+      char ** const tmp2 = (char **) realloc(seen_target_positions, (num_seen_target_positions + 1) * sizeof tmp);
+      if (tmp2)
+      {
+        if (!num_seen_target_positions)
+          atexit(&free_seen_target_positions);
+        tmp2[num_seen_target_positions++] = tmp;
+        seen_target_positions = tmp2;
+      }
+      else
+        free(tmp);
+    }
+  }
+
+  return true;
+}
+
+typedef struct {
+  piece_walk_type piece;
+  Side color;
+  square orig_square;
+} piece_on_square;
+
+static int get_blocking_pieces_up(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) + 8);
+  for (int sq = adjacent; sq < 64; sq += 8)
+  {
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if ((p != Queen) && (p != Rook))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_down(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) - 8);
+  for (int sq = adjacent; sq >= 0; sq -= 8)
+  {
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if ((p != Queen) && (p != Rook))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_left(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) - 1);
+  for (int sq = square_checked; (sq % 8);)
+  {
+    --sq;
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if ((p != Queen) && (p != Rook))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_right(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) + 1);
+  for (int sq = adjacent; (sq % 8); ++sq)
+  {
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if ((p != Queen) && (p != Rook))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_upper_left(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) + 7);
+  for (int sq = adjacent; sq < 64; sq += 7)
+  {
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if ((p != Queen) && (p != Bishop))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_upper_right(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) + 9);
+  for (int sq = adjacent; sq < 64; sq += 9)
+  {
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if ((p != Queen) && (p != Bishop))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_lower_left(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) - 9);
+  for (int sq = adjacent; sq >= 0; sq -= 9)
+  {
+    if ((sq % 8) == 7)
+      break;
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if (p == Pawn)
+        return (((sq == adjacent) && (color_checked == Black)) ? -1 : 0);
+      if ((p != Queen) && (p != Bishop))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return 0;
+}
+
+static int get_blocking_pieces_lower_right(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+{
+  int num_possible_blocks = 0;
+  square possible_blocks[7];
+  int const adjacent = (((int) square_checked) - 7);
+  for (int sq = adjacent; sq >= 0; sq -= 7)
+  {
+    if (!(sq % 8))
+      break;
+    if (final[sq].color == color_checked)
+      return 0;
+    piece_walk_type const p = final[sq].piece;
+    if (p != Empty)
+    {
+      if (p == King)
+        return ((sq == adjacent) ? -1 : 0);
+      if (p == Pawn)
+        return (((sq == adjacent) && (color_checked == Black)) ? -1 : 0);
+      if ((p != Queen) && (p != Bishop))
+        return 0;
+      if (!num_possible_blocks)
+        return -1;
+      for (int i = 0; i < num_possible_blocks; ++i)
+        blocks[i] = possible_blocks[i];
+      return num_possible_blocks;
+    }
+    if ((init[sq].color == White) &&
+        !((square_must_remain_open >> sq) & 1U))
+      possible_blocks[num_possible_blocks++] = (square) sq;
+  }
+  return num_possible_blocks;
+}
+
+static boolean checked_by_knight(piece_on_square const * const final, square const square_checked, Side const color_checked)
+{
+  int const row = (square_checked / 8);
+  int const col = (square_checked % 8);
+  if (row)
+  {
+    if (col > 1)
+      if ((final[square_checked - 10].piece == Knight) && (final[square_checked - 10].color != color_checked))
+        return true;
+    if (col < 6)
+      if ((final[square_checked - 6].piece == Knight) && (final[square_checked - 6].color != color_checked))
+        return true;
+    if (row > 1)
+    {
+      if (col)
+        if ((final[square_checked - 17].piece == Knight) && (final[square_checked - 17].color != color_checked))
+          return true;
+      if (col < 7)
+        if ((final[square_checked - 15].piece == Knight) && (final[square_checked - 15].color != color_checked))
+          return true;
+    }
+  }
+  if (row < 7)
+  {
+    if (col > 1)
+      if ((final[square_checked + 6].piece == Knight) && (final[square_checked + 6].color != color_checked))
+        return true;
+    if (col < 6)
+      if ((final[square_checked + 10].piece == Knight) && (final[square_checked + 10].color != color_checked))
+        return true;
+    if (row < 6)
+    {
+      if (col)
+        if ((final[square_checked + 15].piece == Knight) && (final[square_checked + 15].color != color_checked))
+          return true;
+      if (col < 7)
+        if ((final[square_checked + 17].piece == Knight) && (final[square_checked + 17].color != color_checked))
+          return true;
+    }
+  }
+  return false;
+}
+
+static boolean possiblePosition(stored_position_type const *const initPosition, square const * const targetPos)
+{
+  enum {
+    a1, b1, c1, d1, e1, f1, g1, h1,
+    a2, b2, c2, d2, e2, f2, g2, h2,
+    a3, b3, c3, d3, e3, f3, g3, h3,
+    a4, b4, c4, d4, e4, f4, g4, h4,
+    a5, b5, c5, d5, e5, f5, g5, h5,
+    a6, b6, c6, d6, e6, f6, g6, h6,
+    a7, b7, c7, d7, e7, f7, g7, h7,
+    a8, b8, c8, d8, e8, f8, g8, h8
+  };
+
+  // Convert the positions to more convenient forms.
+  piece_on_square initial[64];
+  piece_on_square final[64];
+  unsigned long long seen_black_pieces = 0;
+  square bKPosition;
+  square wKPosition;
+  for (int index = a1; index <= h8; ++index)
+  {
+    piece_walk_type p = get_walk_of_piece_on_square(targetPos[index]);
+    final[index].piece = p;
+    final[index].orig_square = orig_square_of_piece(targetPos[index]);
+    if (p == Empty)
+    {
+      final[index].color = no_side;
+      final[index].orig_square = (h8 + 1);
+    }
+    else
+    {
+      final[index].orig_square = orig_square_of_piece(targetPos[index]);
+      if (TSTFLAG(being_solved.spec[targetPos[index]], White))
+      {
+        if (p == King)
+          wKPosition = index;
+        final[index].color = White;
+      }
+      else
+      {
+        if (p == King)
+          bKPosition = index;
+        final[index].color = Black;
+        seen_black_pieces |= (1ULL << final[index].orig_square);
+      }
+    }
+
+    p = initPosition->e[index];
+    initial[index].piece = p;
+    if (p == Empty)
+    {
+      initial[index].color = no_side;
+      initial[index].orig_square = (h8 + 1);
+    }
+    else
+    {
+      initial[index].orig_square = index;
+      if (TSTFLAG(initPosition->spec[index], White))
+        initial[index].color = White;
+      else
+        initial[index].color = Black;
+    }
+  }
+
+  // ensure that White's move was legal
+  boolean castle_kingside = false;
+  boolean castle_queenside = false;
+  boolean pawn_capture = false;
+  int moved_white_piece_orig_square;
+  int moved_white_piece_new_square;
+  unsigned long long square_must_remain_open;
+
+  if ((wKPosition == g1) && (final[g1].orig_square == e1))
+  {
+    if ((final[f1].piece != Rook) || (final[f1].color != White) || (final[f1].orig_square != h1))
+      return false;
+    if ((final[e1].piece != Empty) || (final[h1].piece != Empty))
+      return false;
+    castle_kingside = true;
+    moved_white_piece_orig_square = e1;
+    moved_white_piece_new_square = g1;
+    square_must_remain_open = ((1ULL << f1) | (1ULL << g1));
+  }
+  else if ((wKPosition == c1) && (final[c1].orig_square == e1))
+  {
+    if ((final[d1].piece != Rook) || (final[d1].color != White) || (final[d1].orig_square != a1))
+      return false;
+    if ((final[a1].piece != Empty) || (final[b1].piece != Empty) || (final[e1].piece != Empty))
+      return false;
+    castle_queenside = true;
+    moved_white_piece_orig_square = e1;
+    moved_white_piece_new_square = c1;
+    square_must_remain_open = ((1ULL << b1) | (1ULL << c1) | (1ULL << d1));
+  }
+  else
+  {
+    square_must_remain_open = 0;
+    for (int index = a1; index <= h8; ++index)
+    {
+      if (final[index].color == White)
+      {
+        int orig_square = final[index].orig_square;
+        if (orig_square != index)
+        {
+          // the square White moves from must be empty
+          if (final[orig_square].piece != Empty)
+            return false;
+
+          moved_white_piece_orig_square = orig_square;
+          moved_white_piece_new_square = index;
+
+          // a White line piece can't have jumped over anything
+          piece_walk_type const p = initial[index].piece;
+          if (p != Knight)
+          {
+            // line pieces cannot have jumped over anything
+            int orig_rank = (orig_square / 8);
+            int orig_file = (orig_square % 8);
+            int const new_rank = (index / 8);
+            int const new_file = (index % 8);
+            int step;
+            if (new_rank > orig_rank)
+              step = 8;
+            else if (new_rank < orig_rank)
+              step = -8;
+            else
+              step = 0;
+            if (new_file > orig_file)
+              ++step;
+            else if (new_file < orig_file)
+              --step;
+            while ((orig_square += step) != index)
+            {
+              if (final[orig_square].piece != Empty)
+                return false;
+              square_must_remain_open |= (1ULL << orig_square);
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // retract White's last move
+  final[moved_white_piece_orig_square] = initial[moved_white_piece_orig_square];
+  final[moved_white_piece_new_square].piece = Empty;
+  final[moved_white_piece_new_square].color = no_side;
+  final[moved_white_piece_new_square].orig_square = (h8 + 1);
+  if (castle_kingside)
+  {
+    final[h1] = initial[f1];
+    final[f1].piece = Empty;
+    final[f1].color = no_side;
+    final[f1].orig_square = (h8 + 1);
+  }
+  else if (castle_queenside)
+  {
+    final[a1] = initial[d1];
+    final[d1].piece = Empty;
+    final[d1].color = no_side;
+    final[d1].orig_square = (h8 + 1);
+  }
+  else if ((final[moved_white_piece_orig_square].piece == Pawn) &&
+           ((moved_white_piece_new_square - moved_white_piece_orig_square) % 8))
+    pawn_capture = true;
+  for (int index = a1; index <= h8; ++index)
+  {
+    if ((initial[index].color == Black) &&
+        !((seen_black_pieces >> index) & 1U))
+    {
+      // some moves can't be captures
+      if (castle_kingside || castle_queenside)
+        return false;
+      if ((final[moved_white_piece_orig_square].piece == Pawn) && !pawn_capture)
+        return false;
+
+      if (initial[index].piece == Pawn)
+        final[moved_white_piece_new_square].piece = nr_piece_walks; // The pawn might have promoted.
+      else
+        final[moved_white_piece_new_square].piece = initial[index].piece;
+      final[moved_white_piece_new_square].color = initial[index].color;
+      final[moved_white_piece_new_square].orig_square = initial[index].orig_square;
+      goto FOUND_CAPTURE;
+    }
+  }
+  if (pawn_capture)
+    return false;
+FOUND_CAPTURE:;
+  // TODO: Should we consider the possibility that White's move was an en passant capture?
+
+  // Restore whatever White pieces are needed to block checks.
+  int num_blocks_needed = 0;
+  square blocks[15][6]; // first index = line, second index = possibility along that line; h8 + 1 = sentinel
+  int num_block_poss[15] = {0};
+  int num_blocks_tmp;
+  // If White castled, then various squares can't have been attacked.
+  if (castle_kingside || castle_queenside)
+  {
+    if (checked_by_knight(final, e1, White))
+      return false;
+    if (castle_kingside)
+    {
+      if (checked_by_knight(final, f1, White))
+        return false;
+      num_blocks_tmp = get_blocking_pieces_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+      num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], f1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+      num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], f1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+      num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], f1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+    }
+    else
+    {
+      if (checked_by_knight(final, d1, White))
+        return false;
+      num_blocks_tmp = get_blocking_pieces_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+      num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], d1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+      num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], d1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+      num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], d1, White);
+      if (num_blocks_tmp < 0)
+        return false;
+      if (num_blocks_tmp)
+      {
+        if (num_blocks_tmp == 1)
+          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        else
+          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+      }
+    }
+    num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+    if (num_blocks_tmp < 0)
+      return false;
+    if (num_blocks_tmp)
+    {
+      if (num_blocks_tmp == 1)
+        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      else
+        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+    }
+  }
+  // Black can't have been in check.
+  if (checked_by_knight(final, bKPosition, Black))
+    return false;
+  num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_lower_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_down(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_lower_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+  if (num_blocks_tmp < 0)
+    return false;
+  if (num_blocks_tmp)
+  {
+    if (num_blocks_tmp == 1)
+      final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+    else
+      num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+  }
+  // TODO: What to do about the num_blocks_needed lines on which there are multiple possible blocks?
+
+  // What squares have White's pieces guarded throughout?
+  unsigned long long guarded_by_white = 0;
+  for (int sq = a1; sq <= h8; ++sq)
+    if (final[sq].color == White)
+    {
+      int const row = (sq / 8);
+      int const col = (sq % 8);
+      piece_walk_type const p = final[sq].piece;
+      switch (final[sq].piece)
+      {
+        case Pawn:
+          if (col)
+            guarded_by_white |= (1ULL << (sq + 7));
+          if (col < 7)
+            guarded_by_white |= (1ULL << (sq + 9));
+          break;
+        case Knight:
+          if (row)
+          {
+            if (col > 1)
+              guarded_by_white |= (1ULL << (sq - 10));
+            if (col < 6)
+              guarded_by_white |= (1ULL << (sq - 6));
+            if (row > 1)
+            {
+              if (col)
+                guarded_by_white |= (1ULL << (sq - 17));
+              if (col < 7)
+                guarded_by_white |= (1ULL << (sq - 15));
+            }
+          }
+          if (row < 7)
+          {
+            if (col > 1)
+              guarded_by_white |= (1ULL << (sq + 6));
+            if (col < 6)
+              guarded_by_white |= (1ULL << (sq + 10));
+            if (row < 6)
+            {
+              if (col)
+                guarded_by_white |= (1ULL << (sq + 15));
+              if (col < 7)
+                guarded_by_white |= (1ULL << (sq + 17));
+            }
+          }
+          break;
+        case Queen:
+        case King:
+        case Bishop:
+          if (row)
+          {
+            if (col)
+              guarded_by_white |= (1ULL << (sq - 9));
+            if (col < 7)
+              guarded_by_white |= (1ULL << (sq - 7));
+          }
+          if (row < 7)
+          {
+            if (col)
+              guarded_by_white |= (1ULL << (sq + 7));
+            if (col < 7)
+              guarded_by_white |= (1ULL << (sq + 9));
+          }
+          if (p == Bishop)
+            break;
+          // intentional fall-through
+        case Rook:
+          if (row)
+            guarded_by_white |= (1ULL << (sq - 8));
+          if (row < 7)
+            guarded_by_white |= (1ULL << (sq + 8));
+          if (col)
+            guarded_by_white |= (1ULL << (sq - 1));
+          if (col < 7)
+            guarded_by_white |= (1ULL << (sq + 1));
+          break;
+        default:
+          break;
+      }
+    }
+
+  // What squares must attack the wK?
+  int const wKRow = (wKPosition / 8);
+  int const wKCol = (wKPosition % 8);
+  unsigned long long rook_checks_white_king = 0;
+  unsigned long long knight_checks_white_king = 0;
+  unsigned long long pawn_checks_white_king = 0;
+  unsigned long long bishop_checks_white_king = 0;
+  if (wKRow)
+  {
+    rook_checks_white_king |= (1ULL << (wKPosition - 8));
+    if (wKCol)
+    {
+      bishop_checks_white_king |= (1ULL << (wKPosition - 9));
+      if (wKCol > 1)
+        knight_checks_white_king |= (1ULL << (wKPosition - 10));
+    }
+    if (wKCol < 7)
+    {
+      bishop_checks_white_king |= (1ULL << (wKPosition - 7));
+      if (wKCol < 6)
+        knight_checks_white_king |= (1ULL << (wKPosition - 6));
+    }
+    if (wKRow > 1)
+    {
+      if (wKCol)
+        knight_checks_white_king |= (1ULL << (wKPosition - 17));
+      if (wKCol < 7)
+        knight_checks_white_king |= (1ULL << (wKPosition - 15));
+    }
+  }
+  if (wKRow < 7)
+  {
+    rook_checks_white_king |= (1ULL << (wKPosition + 8));
+    if (wKCol)
+    {
+      pawn_checks_white_king |= (1ULL << (wKPosition + 7));
+      if (wKCol > 1)
+        knight_checks_white_king |= (1ULL << (wKPosition + 6));
+    }
+    if (wKCol < 7)
+    {
+      pawn_checks_white_king |= (1ULL << (wKPosition + 9));
+      if (wKCol < 6)
+        knight_checks_white_king |= (1ULL << (wKPosition + 10));
+    }
+    if (wKRow < 6)
+    {
+      if (wKCol)
+        knight_checks_white_king |= (1ULL << (wKPosition + 15));
+      if (wKCol < 7)
+        knight_checks_white_king |= (1ULL << (wKPosition + 17));
+    }
+  }
+  if (wKCol)
+  {
+    rook_checks_white_king |= (1ULL << (wKPosition - 1));
+  }
+  if (wKCol < 7)
+  {
+    rook_checks_white_king |= (1ULL << (wKPosition + 1));
+  }
+  bishop_checks_white_king |= pawn_checks_white_king;
+  unsigned long long const queen_checks_white_king = (bishop_checks_white_king | rook_checks_white_king);
+
+  // Determine which pieces never moved.
+  unsigned long long piece_never_moved = 0;
+  for (int index = a1; index <= h8; ++index)
+    if ((final[index].color == White) ||
+        ((final[index].piece == Pawn) && (final[index].orig_square == index)))
+      piece_never_moved |= (1ULL << index);
+  unsigned long long prev_piece_never_moved;
+  do {
+    prev_piece_never_moved = piece_never_moved;
+    for (int index = a1; index <= h8; ++index)
+    {
+      piece_walk_type const p = initial[index].piece;
+      if (p != Empty)
+      {
+        unsigned long long checking_squares;
+        switch (p)
+        {
+          case Pawn:
+            checking_squares = pawn_checks_white_king;
+            break;
+          case Knight:
+            checking_squares = knight_checks_white_king;
+            break;
+          case Bishop:
+            checking_squares = bishop_checks_white_king;
+            break;
+          case Rook:
+            checking_squares = rook_checks_white_king;
+            break;
+          case King:
+          case Queen:
+            checking_squares = queen_checks_white_king;
+          default:
+            checking_squares = 0;
+        }
+        if (!(((piece_never_moved | checking_squares) >> index) & 1U))
+        {
+          int const row = (index / 8);
+          int const col = (index % 8);
+          switch (p)
+          {
+            case Pawn:
+              {
+                int new_pos = (index - 8);
+                if (!((piece_never_moved >> new_pos) & 1U))
+                {
+                  if (!((checking_squares >> new_pos) & 1U))
+                    break;
+                  if (row == 6)
+                    if (!(((piece_never_moved | checking_squares) >> (new_pos - 8)) & 1U))
+                      break;
+                }
+                if (col)
+                {
+                  new_pos = (index - 9);
+                  if (!((checking_squares >> new_pos) & 1U))
+                  {
+                    if ((initial[new_pos].color == White) &&
+                        !((piece_never_moved >> new_pos) & 1U))
+                      break;
+                    if (row == 3)
+                    {
+                      int const en_passant = (index - 1);
+                      if ((initial[en_passant].piece == Pawn) &&
+                          (initial[en_passant].color == White) &&
+                          (initial[en_passant - 8].piece == Empty) &&
+                          (initial[en_passant - 16].piece == Empty) &&
+                          !((piece_never_moved >> en_passant) & 1U))
+                        break;
+                    }
+                  }
+                }
+                if (col < 7)
+                {
+                  new_pos = (index - 7);
+                  if (!((checking_squares >> new_pos) & 1U))
+                  {
+                    if ((initial[new_pos].color == White) &&
+                        !((piece_never_moved >> new_pos) & 1U))
+                      break;
+                    if (row == 3)
+                    {
+                      int const en_passant = (index + 1);
+                      if ((initial[en_passant].piece == Pawn) &&
+                          (initial[en_passant].color == White) &&
+                          (initial[en_passant - 8].piece == Empty) &&
+                          (initial[en_passant - 16].piece == Empty) &&
+                          !((piece_never_moved >> en_passant) & 1U))
+                        break;
+                    }
+                  }
+                }
+              }
+              piece_never_moved |= (1ULL << index);
+              break;
+            case Knight:
+              {
+                unsigned long long const forbidden_squares = (piece_never_moved | checking_squares);
+                if (row)
+                {
+                  if (col > 1)
+                    if (!((forbidden_squares >> (index - 10)) & 1U))
+                      break;
+                  if (col < 6)
+                    if (!((forbidden_squares >> (index - 6)) & 1U))
+                      break;
+                  if (row > 1)
+                  {
+                    if (col)
+                      if (!((forbidden_squares >> (index - 17)) & 1U))
+                        break;
+                    if (col < 7)
+                      if (!((forbidden_squares >> (index - 15)) & 1U))
+                        break;
+                  }
+                }
+                if (row < 7)
+                {
+                  if (col > 1)
+                    if (!((forbidden_squares >> (index + 6)) & 1U))
+                      break;
+                  if (col < 6)
+                    if (!((forbidden_squares >> (index + 10)) & 1U))
+                      break;
+                  if (row < 6)
+                  {
+                    if (col)
+                      if (!((forbidden_squares >> (index + 15)) & 1U))
+                        break;
+                    if (col < 7)
+                      if (!((forbidden_squares >> (index + 17)) & 1U))
+                        break;
+                  }
+                }
+              }
+              piece_never_moved |= (1ULL << index);
+              break;
+            case King:
+              {
+                unsigned long long const forbidden_squares = (piece_never_moved | guarded_by_white);
+                if (row)
+                {
+                  if (!((forbidden_squares >> (index - 8)) & 1U))
+                    break;
+                  if (col)
+                    if (!((forbidden_squares >> (index - 9)) & 1U))
+                      break;
+                  if (col < 7)
+                    if (!((forbidden_squares >> (index - 7)) & 1U))
+                      break;
+                }
+                if (row < 7)
+                {
+                  if (!((forbidden_squares >> (index + 8)) & 1U))
+                    break;
+                  if (col)
+                    if (!((forbidden_squares >> (index + 7)) & 1U))
+                      break;
+                  if (col < 7)
+                    if (!((forbidden_squares >> (index + 9)) & 1U))
+                      break;
+                }
+                if (col)
+                  if (!((forbidden_squares >> (index - 1)) & 1U))
+                    break;
+                if (col < 7)
+                  if (!((forbidden_squares >> (index + 1)) & 1U))
+                    break;
+              }
+              piece_never_moved |= (1ULL << index);  
+              break;
+            case Queen:
+            case Bishop:
+              for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_BISHOP_MOVE;
+              } 
+              for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_BISHOP_MOVE;
+              } 
+              for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_BISHOP_MOVE;
+              } 
+              for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_BISHOP_MOVE;
+              } 
+              if (p == Bishop)            
+              {
+                piece_never_moved |= (1ULL << index);
+FOUND_BISHOP_MOVE:
+                break;
+              }
+            case Rook:
+              for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_ROOK_MOVE;
+              } 
+              for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_ROOK_MOVE;
+              } 
+              for (int poss_move = index; (poss_move % 8);)
+              {
+                --poss_move;
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_ROOK_MOVE;
+              } 
+              for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
+              {
+                if ((piece_never_moved >> poss_move) & 1U)
+                  break;
+                if (!((checking_squares >> poss_move) & 1U))
+                  goto FOUND_ROOK_MOVE;
+              } 
+              piece_never_moved |= (1ULL << index);
+FOUND_ROOK_MOVE:
+              break;
+            default:
+              break;
+          }
+        }
+      }
+    }
+  } while (prev_piece_never_moved != piece_never_moved);
+
+  // Where could pieces end up?
+  unsigned long long pawn_could_reach[64];
+  unsigned long long knight_could_reach[64];
+  unsigned long long bishop_could_reach[64];
+  unsigned long long rook_could_reach[64];
+  unsigned long long queen_could_reach[64];
+  unsigned long long king_could_reach[64];
+  unsigned long long promoted_piece_could_reach[64]; // = knight | bishop | rook | queen
+  for (int index = a1; index <= h8; ++index)
+  {
+    unsigned long long cur_bit = (1ULL << index);
+    pawn_could_reach[index] = cur_bit;
+    knight_could_reach[index] = cur_bit;
+    bishop_could_reach[index] = cur_bit;
+    rook_could_reach[index] = cur_bit;
+    queen_could_reach[index] = cur_bit;
+    king_could_reach[index] = cur_bit;
+  }
+  // Where could pawns end up?
+  for (int row = 1; row < 7; ++row)
+  {
+    for (int col = 0; col < 8; ++col)
+    {
+      int const index = ((row * 8) + col);
+      if (!(((piece_never_moved | pawn_checks_white_king) >> index) & 1U))
+      {
+        if (!(((piece_never_moved | pawn_checks_white_king) >> (index - 8)) & 1U))
+          pawn_could_reach[index] |= pawn_could_reach[index - 8];
+        if (col)
+          if ((initial[index - 9].color == White) && !(((piece_never_moved | pawn_checks_white_king) >> (index - 9)) & 1U))
+            pawn_could_reach[index] |= pawn_could_reach[index - 9];
+        if (col < 7)
+          if ((initial[index - 7].color == White) && !(((piece_never_moved | pawn_checks_white_king) >> (index - 7)) & 1U))
+            pawn_could_reach[index] |= pawn_could_reach[index - 7];
+      }
+    }
+    if (row == 3)
+      // Handle an initial en passant capture.
+      for (int index = a4; index <= h4; ++index)
+        if (!(((piece_never_moved | pawn_checks_white_king) >> index) & 1U))
+          if ((initial[index].piece == Pawn) && (initial[index].color == Black))
+          {
+            if (index > a4)
+              if ((initial[index - 1].piece == Pawn) &&
+                  (initial[index - 1].color == White) &&
+                  (initial[index - 9].piece == Empty) &&
+                  (initial[index - 17].piece == Empty) &&
+                  !((piece_never_moved >> (index - 1)) & 1U) &&
+                  !((pawn_checks_white_king >> (index - 9) & 1U)))
+                pawn_could_reach[index] |= pawn_could_reach[index - 9];
+            if (index < h4)
+              if ((initial[index + 1].piece == Pawn) &&
+                  (initial[index + 1].color == White) &&
+                  (initial[index - 7].piece == Empty) &&
+                  (initial[index - 15].piece == Empty) &&
+                  !((piece_never_moved >> (index + 1)) & 1U) &&
+                  !((pawn_checks_white_king >> (index - 7) & 1U)))
+                pawn_could_reach[index] |= pawn_could_reach[index - 7];
+          }
+  }
+  // Where could Knights end up?
+  boolean found_another_move;
+  do {
+    found_another_move = false;
+    unsigned long long const forbidden_squares = (piece_never_moved | knight_checks_white_king);
+    for (int index = a1; index <= h8; ++index)
+      if (!(((piece_never_moved | knight_checks_white_king) >> index) & 1U))
+      {
+        unsigned long long orig_poss = knight_could_reach[index];
+        int const row = (index / 8);
+        int const col = (index % 8);
+        if (row)
+        {
+          if (col > 1)
+            if (!((forbidden_squares >> (index - 10)) & 1U))
+              knight_could_reach[index] |= knight_could_reach[index - 10];
+          if (col < 6)
+            if (!((forbidden_squares >> (index - 6)) & 1U))
+              knight_could_reach[index] |= knight_could_reach[index - 6];
+          if (row > 1)
+          {
+            if (col)
+              if (!((forbidden_squares >> (index - 17)) & 1U))
+                knight_could_reach[index] |= knight_could_reach[index - 17];
+            if (col < 7)
+              if (!((forbidden_squares >> (index - 15)) & 1U))
+                knight_could_reach[index] |= knight_could_reach[index - 15];
+          }
+        }
+        if (row < 7)
+        {
+          if (col > 1)
+            if (!((forbidden_squares >> (index + 6)) & 1U))
+              knight_could_reach[index] |= knight_could_reach[index + 6];
+          if (col < 6)
+            if (!((forbidden_squares >> (index + 10)) & 1U))
+              knight_could_reach[index] |= knight_could_reach[index + 10];
+          if (row < 6)
+          {
+            if (col)
+              if (!((forbidden_squares >> (index + 15)) & 1U))
+                knight_could_reach[index] |= knight_could_reach[index + 15];
+            if (col < 7)
+              if (!((forbidden_squares >> (index + 17)) & 1U))
+                knight_could_reach[index] |= knight_could_reach[index + 17];
+          }
+        }
+        if (knight_could_reach[index] != orig_poss)
+          found_another_move = true;
+      }
+  } while (found_another_move);
+  // Allow for a final Knight move delivering check.
+  for (int index = a1; index <= h8; ++index)
+    if (!(((piece_never_moved | knight_checks_white_king) >> index) & 1U))
+    {
+      int const row = (index / 8);
+      int const col = (index % 8);
+      if (row)
+      {
+        if (col > 1)
+          if (!((piece_never_moved >> (index - 10)) & 1U))
+            knight_could_reach[index] |= (1ULL << (index - 10));
+        if (col < 6)
+          if (!((piece_never_moved >> (index - 6)) & 1U))
+            knight_could_reach[index] |= (1ULL << (index - 6));
+        if (row > 1)
+        {
+          if (col)
+            if (!((piece_never_moved >> (index - 17)) & 1U))
+              knight_could_reach[index] |= (1ULL << (index - 17));
+          if (col < 7)
+            if (!((piece_never_moved >> (index - 15)) & 1U))
+              knight_could_reach[index] |= (1ULL << (index - 15));
+        }
+      }
+      if (row < 7)
+      {
+        if (col > 1)
+          if (!((piece_never_moved >> (index + 6)) & 1U))
+            knight_could_reach[index] |= (1ULL << (index + 6));
+        if (col < 6)
+          if (!((piece_never_moved >> (index + 10)) & 1U))
+            knight_could_reach[index] |= (1ULL << (index + 10));
+        if (row < 6)
+        {
+          if (col)
+            if (!((piece_never_moved >> (index + 15)) & 1U))
+              knight_could_reach[index] |= (1ULL << (index + 15));
+          if (col < 7)
+            if (!((piece_never_moved >> (index + 17)) & 1U))
+              knight_could_reach[index] |= (1ULL << (index + 17));
+        }
+      }
+    }
+
+  // Where could Bishops end up?
+  do
+  {
+    found_another_move = false;
+    for (int index = a1; index <= h8; ++index)
+      if (!(((piece_never_moved | bishop_checks_white_king) >> index) & 1U))
+      {
+        unsigned long long orig_poss = bishop_could_reach[index];
+        for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((bishop_checks_white_king >> poss_move) & 1U))
+            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+        } 
+        for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((bishop_checks_white_king >> poss_move) & 1U))
+            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+        } 
+        for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((bishop_checks_white_king >> poss_move) & 1U))
+            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+        } 
+        for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((bishop_checks_white_king >> poss_move) & 1U))
+            bishop_could_reach[index] |= bishop_could_reach[poss_move];
+        } 
+        if (bishop_could_reach[index] != orig_poss)
+          found_another_move = true;
+      }
+  } while (found_another_move);
+  // Allow for a final Bishop move delivering check.
+  for (int index = a1; index <= h8; ++index)
+    if (!(((piece_never_moved | bishop_checks_white_king) >> index) & 1U))
+    {
+      for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        bishop_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        bishop_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        bishop_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        bishop_could_reach[index] |= (1ULL << poss_move);
+      }
+    }
+
+  // Where could Rooks end up?
+  do
+  {
+    found_another_move = false;
+    for (int index = a1; index <= h8; ++index)
+      if (!(((piece_never_moved | rook_checks_white_king) >> index) & 1U))
+      {
+        unsigned long long orig_poss = rook_could_reach[index];
+        for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((rook_checks_white_king >> poss_move) & 1U))
+            rook_could_reach[index] |= rook_could_reach[poss_move];
+        } 
+        for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((rook_checks_white_king >> poss_move) & 1U))
+            rook_could_reach[index] |= rook_could_reach[poss_move];
+        } 
+        for (int poss_move = index; (poss_move % 8);)
+        {
+          --poss_move;
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((rook_checks_white_king >> poss_move) & 1U))
+            rook_could_reach[index] |= rook_could_reach[poss_move];
+        } 
+        for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((rook_checks_white_king >> poss_move) & 1U))
+            rook_could_reach[index] |= rook_could_reach[poss_move];
+        }
+        if (rook_could_reach[index] != orig_poss)
+          found_another_move = true;
+      }
+  } while (found_another_move);
+  // Allow for a final Rook move delivering check.
+  for (int index = a1; index <= h8; ++index)
+    if (!(((piece_never_moved | rook_checks_white_king) >> index) & 1U))
+    {
+      for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        rook_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        rook_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = index; (poss_move % 8);)
+      {
+        --poss_move;
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        rook_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        rook_could_reach[index] |= (1ULL << poss_move);
+      }
+    }
+
+  // Where could Queens end up?
+  do
+  {
+    found_another_move = false;
+    for (int index = a1; index <= h8; ++index)
+      if (!(((piece_never_moved | queen_checks_white_king) >> index) & 1U))
+      {
+        unsigned long long orig_poss = queen_could_reach[index];
+        for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        } 
+        for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        } 
+        for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        } 
+        for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        }
+        for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        } 
+        for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        } 
+        for (int poss_move = index; (poss_move % 8);)
+        {
+          --poss_move;
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        } 
+        for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
+        {
+          if ((piece_never_moved >> poss_move) & 1U)
+            break;
+          if (!((queen_checks_white_king >> poss_move) & 1U))
+            queen_could_reach[index] |= queen_could_reach[poss_move];
+        }
+        if (queen_could_reach[index] != orig_poss)
+          found_another_move = true;
+      }
+  } while (found_another_move);
+  // Allow for a final Queen move delivering check.
+  for (int index = a1; index <= h8; ++index)
+    if (!(((piece_never_moved | queen_checks_white_king) >> index) & 1U))
+    {
+      for (int poss_move = (index + 9); ((poss_move <= h8) && (poss_move % 8)); poss_move += 9)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index - 9); ((poss_move >= (int) a1) && ((poss_move % 8) != 7)); poss_move -= 9)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index - 7); ((poss_move >= (int) a1) && (poss_move % 8)); poss_move -= 7)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index + 7); ((poss_move <= h8) && (poss_move % 8)); poss_move += 7)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      }
+      for (int poss_move = (index + 8); poss_move <= h8; poss_move += 8)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index - 8); poss_move >= (int) a1; poss_move -= 8)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = index; (poss_move % 8);)
+      {
+        --poss_move;
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      } 
+      for (int poss_move = (index + 1); (poss_move % 8); ++poss_move)
+      {
+        if ((piece_never_moved >> poss_move) & 1U)
+          break;
+        queen_could_reach[index] |= (1ULL << poss_move);
+      }
+    }
+
+  // Where could the King end up?
+  do
+  {
+    found_another_move = false;
+    unsigned long long const forbidden_squares = (piece_never_moved | guarded_by_white);
+    for (int index = a1; index <= h8; ++index)
+      if (!((forbidden_squares >> index) & 1U))
+      {
+        unsigned long long orig_poss = queen_could_reach[index];
+        int const row = (index / 8);
+        int const col = (index % 8);
+        if (row)
+        {
+          if (!((forbidden_squares >> (index - 8)) & 1U))
+            king_could_reach[index] |= king_could_reach[index - 8];
+          if (col)
+            if (!((forbidden_squares >> (index - 9)) & 1U))
+              king_could_reach[index] |= king_could_reach[index - 9];
+          if (col < 7)
+            if (!((forbidden_squares >> (index - 7)) & 1U))
+              king_could_reach[index] |= king_could_reach[index - 7];
+        }
+        if (row < 7)
+        {
+          if (!((forbidden_squares >> (index + 8)) & 1U))
+            king_could_reach[index] |= king_could_reach[index + 8];
+          if (col)
+            if (!((forbidden_squares >> (index + 7)) & 1U))
+              king_could_reach[index] |= king_could_reach[index + 7];
+          if (col < 7)
+            if (!((forbidden_squares >> (index + 9)) & 1U))
+              king_could_reach[index] |= king_could_reach[index + 9];
+        }
+        if (col)
+          if (!((forbidden_squares >> (index - 1)) & 1U))
+            king_could_reach[index] |= king_could_reach[index - 1];
+        if (col < 7)
+          if (!((forbidden_squares >> (index + 1)) & 1U))
+            king_could_reach[index] |= king_could_reach[index + 1];
+        if (king_could_reach[index] != orig_poss)
+          found_another_move = true;
+      }
+  } while (found_another_move);
+
+  // Promoted pieces could be anything.
+  for (int index = a1; index <= h8; ++index)
+    promoted_piece_could_reach[index] = (knight_could_reach[index] | bishop_could_reach[index] | rook_could_reach[index] | queen_could_reach[index]);
+
+  // Could pieces have reached their final squares?
+  for (int index = a1; index <= h8; ++index)
+    if (final[index].color == Black)
+    {
+      int const orig_square = final[index].orig_square;
+      int const orig_piece = initial[final[index].orig_square].piece;
+      switch (final[index].piece)
+      {
+        case Pawn:
+          if (!((pawn_could_reach[orig_square] >> index) & 1U))
+            return false;
+          break;
+        case Knight:
+          if (orig_piece == Knight)
+          {
+            if (!((knight_could_reach[orig_square] >> index) & 1U))
+              return false;
+          }
+          else
+          {
+            boolean found_promotion = false;
+            for (int promote = a1; promote <= h1; ++promote)
+            {
+              if ((pawn_could_reach[orig_square] >> promote) & 1U)
+                if ((knight_could_reach[promote] >> index) & 1U)
+                {
+                  found_promotion = true;
+                  break;
+                }
+            }
+            if (!found_promotion)
+              return false;
+          }
+          break;
+        case Bishop:
+          if (orig_piece == Bishop)
+          {
+            if (!((bishop_could_reach[orig_square] >> index) & 1U))
+              return false;
+          }
+          else
+          {
+            boolean found_promotion = false;
+            for (int promote = a1; promote <= h1; ++promote)
+            {
+              if ((pawn_could_reach[orig_square] >> promote) & 1U)
+                if ((bishop_could_reach[promote] >> index) & 1U)
+                {
+                  found_promotion = true;
+                  break;
+                }
+            }
+            if (!found_promotion)
+              return false;
+          }
+          break;
+        case Rook:
+          if (orig_piece == Rook)
+          {
+            if (!((rook_could_reach[orig_square] >> index) & 1U))
+              return false;
+          }
+          else
+          {
+            boolean found_promotion = false;
+            for (int promote = a1; promote <= h1; ++promote)
+            {
+              if ((pawn_could_reach[orig_square] >> promote) & 1U)
+                if ((rook_could_reach[promote] >> index) & 1U)
+                {
+                  found_promotion = true;
+                  break;
+                }
+            }
+            if (!found_promotion)
+              return false;
+          }
+          break;
+        case Queen:
+          if (orig_piece == Queen)
+          {
+            if (!((queen_could_reach[orig_square] >> index) & 1U))
+              return false;
+          }
+          else
+          {
+            boolean found_promotion = false;
+            for (int promote = a1; promote <= h1; ++promote)
+            {
+              if ((pawn_could_reach[orig_square] >> promote) & 1U)
+                if ((queen_could_reach[promote] >> index) & 1U)
+                {
+                  found_promotion = true;
+                  break;
+                }
+            }
+            if (!found_promotion)
+              return false;
+          }
+          break;
+        case King:
+          if (!((king_could_reach[orig_square] >> index) & 1U))
+            return false;
+          break;
+        case nr_piece_walks:
+          if (!((pawn_could_reach[orig_square] >> index) & 1U))
+            for (int promote = a1; promote <= h1; ++promote)
+              if (((pawn_could_reach[orig_square] >> promote) |
+                   (promoted_piece_could_reach[promote] >> index)) & 1U)
+                  goto FOUND_PROMOTION;
+          return false;
+FOUND_PROMOTION:
+          break;
+        default:
+          break;
+      }
+    }
+
+  return true;
+}
+
 void solve_target_position(slice_index si)
 {
 #if (defined(_WIN32) && !defined(_MSC_VER))|| defined(__CYGWIN__)
@@ -326,18 +2150,104 @@ void solve_target_position(slice_index si)
     }
   }
 
-  /* solve the problem */
-  ResetPosition(&initial_position);
+  if (possiblePosition(&initial_position, boardnum)) {
+    char forsyth[72];
+    get_forsyth(boardnum, forsyth);
+    if (is_new_forsyth(forsyth))
+    {
+      protocol_fprintf(stdout, "\nTarget position:");
+      for (int row = 7; row >= 0; --row)
+      {
+        for (int col = 0; col < 8; ++col)
+        {
+          int const index = (row * 8) + col;
+          piece_walk_type const type = get_walk_of_piece_on_square(boardnum[index]);
+          if (type==Empty || type==Invalid)
+          {
+            protocol_fprintf(stdout, " -");
+          } else {
+            Flags const flags = being_solved.spec[boardnum[index]];
+            Side const cur_side = TSTFLAG(flags,White) ? White : Black;
+            int myPiece;
+            switch (type) {
+              case King:
+                myPiece = 'K';
+                break;
+              case Pawn:
+                myPiece = 'P';
+                break;
+              case Queen:
+                myPiece = 'Q';
+                break;
+              case Knight:
+                myPiece = 'S';
+                break;
+              case Rook:
+                myPiece = 'R';
+                break;
+              case Bishop:
+                myPiece = 'B';
+                break;
+              default:
+                myPiece = '?';
+            }
+            if (cur_side == Black)
+              myPiece = tolower(myPiece);
+            protocol_fprintf(stdout, " %c", myPiece);
+          }
+        }
+        protocol_fputc('\n', stdout);
+      }
+      protocol_fputc('\n', stdout);
+
+#if 0
+      unsigned int q_index = 100;
+      unsigned int q_row = 0;
+      unsigned int cur_row = 0;
+      for (unsigned int i = 0; forsyth[i]; ++i)
+        if (forsyth[i] == '?')
+        {
+          q_index = i;
+          q_row = cur_row;
+          break;
+        }
+        else if (forsyth[i] == '/')
+          ++cur_row;
+
+      protocol_fputc('\n', stdout);
+      if (q_index == 100)
+        protocol_fprintf(stdout, "forsyth %s\n", forsyth);
+      else
+      {
+        char const black_pieces[5] = {'p', 'r', 's', 'b', 'q'};
+        for (unsigned int i = ((q_row == 7) || !q_row); i < sizeof black_pieces; ++i)
+        {
+          forsyth[q_index] = black_pieces[i];
+          protocol_fprintf(stdout, "forsyth %s\n", forsyth);
+        }
+        forsyth[q_index] = '?';
+      }
+#endif
+    }
+
+    /* solve the problem */
+    ResetPosition(&initial_position);
 
 #if defined(DETAILS)
-  TraceText("target position:\n");
-  trace_target_position(target_position,CapturesLeft[1]);
+    TraceText("target position:\n");
+    trace_target_position(target_position,CapturesLeft[1]);
 #endif
 
-  pipe_solve_delegate(si);
+    // pipe_solve_delegate(si);
 
-  if (solve_result<=MOVE_HAS_SOLVED_LENGTH())
-    solutions_found = true;
+    if (solve_result<=MOVE_HAS_SOLVED_LENGTH())
+      solutions_found = true;
+
+  }
+  else
+  {
+    ResetPosition(&initial_position);
+  }
 
   /* reset the old mating position */
   {
@@ -564,9 +2474,6 @@ static goal_type determine_goal_to_be_reached(slice_index si)
   stip_structure_traversal_override_single(&st,
                                            STTemporaryHackFork,
                                            &stip_traverse_structure_children_pipe);
-  stip_structure_traversal_override_single(&st,
-                                           STAnd,
-                                           &stip_traverse_structure_binary_operand1);
   stip_traverse_structure(si,&st);
 
   TraceValue("%u",goal_to_be_reached);
@@ -702,9 +2609,6 @@ static void insert_goalreachable_guards(slice_index si, goal_type goal)
   stip_structure_traversal_override_by_contextual(&st,
                                                   slice_contextual_conditional_pipe,
                                                   &stip_traverse_structure_children_pipe);
-  stip_structure_traversal_override_single(&st,
-                                           STAnd,
-                                           &stip_traverse_structure_binary_operand1);
   stip_structure_traversal_override(&st,
                                     goalreachable_guards_inserters,
                                     nr_goalreachable_guards_inserters);
@@ -1066,9 +2970,6 @@ static support_for_intelligent_mode stip_supports_intelligent(slice_index si)
   stip_structure_traversal_override(&st,
                                     intelligent_mode_support_detectors,
                                     nr_intelligent_mode_support_detectors);
-  stip_structure_traversal_override_single(&st,
-                                           STAnd,
-                                           &stip_traverse_structure_binary_operand1);
   stip_traverse_structure(si,&st);
 
   TraceFunctionExit(__func__);
