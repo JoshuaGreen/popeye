@@ -525,7 +525,7 @@ static int get_blocking_pieces_lower_right(piece_on_square const * const init, u
         !((square_must_remain_open >> sq) & 1U))
       possible_blocks[num_possible_blocks++] = (square) sq;
   }
-  return num_possible_blocks;
+  return 0;
 }
 
 static boolean checked_by_knight(piece_on_square const * const final, square const square_checked, Side const color_checked)
