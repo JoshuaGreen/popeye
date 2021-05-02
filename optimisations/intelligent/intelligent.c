@@ -712,7 +712,8 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
         }
       }
     }
-    return false; // TODO: Why is this reachable?
+    // White must have made exactly one move, but we didn't find ANY moves.
+    return false;
 FOUND_MOVED_WHITE_PIECE:;
   }
 
@@ -767,12 +768,12 @@ FOUND_CAPTURE:;
   int num_blocks_needed = 0;
   square blocks[15][6]; // first index = line, second index = possibility along that line; h8 + 1 = sentinel
   int num_block_poss[15];
-  int num_blocks_tmp;
   // If White castled, then various squares can't have been attacked.
   if (castle_kingside || castle_queenside)
   {
     if (checked_by_knight(final, e1, White))
       return false;
+    int num_blocks_tmp;
     if (castle_kingside)
     {
       if (checked_by_knight(final, f1, White))
@@ -899,7 +900,7 @@ FOUND_CAPTURE:;
   {
     if (checked_by_knight(final, bKPosition, Black))
       return false;
-    num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    int num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
