@@ -595,7 +595,6 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
   {
     piece_walk_type p = get_walk_of_piece_on_square(targetPos[index]);
     final[index].piece = p;
-    final[index].orig_square = orig_square_of_piece(targetPos[index]);
     if (p == Empty)
     {
       final[index].color = no_side;
@@ -603,7 +602,8 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     }
     else
     {
-      final[index].orig_square = orig_square_of_piece(targetPos[index]);
+      square const orig_square = orig_square_of_piece(targetPos[index]);
+      final[index].orig_square = orig_square;
       if (TSTFLAG(being_solved.spec[targetPos[index]], White))
       {
         if (p == King)
@@ -615,7 +615,7 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
         if (p == King)
           bKPosition = index;
         final[index].color = Black;
-        seen_black_pieces |= (1ULL << final[index].orig_square);
+        seen_black_pieces |= (1ULL << orig_square);
       }
     }
 
@@ -628,11 +628,11 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     }
     else
     {
-      initial[index].orig_square = index;
       if (TSTFLAG(initPosition->spec[index], White))
         initial[index].color = White;
       else
         initial[index].color = Black;
+      initial[index].orig_square = index;
     }
   }
 
