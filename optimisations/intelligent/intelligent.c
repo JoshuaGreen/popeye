@@ -581,15 +581,16 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     a5, b5, c5, d5, e5, f5, g5, h5,
     a6, b6, c6, d6, e6, f6, g6, h6,
     a7, b7, c7, d7, e7, f7, g7, h7,
-    a8, b8, c8, d8, e8, f8, g8, h8
+    a8, b8, c8, d8, e8, f8, g8, h8,
+    invalid_square
   };
 
   // Convert the positions to more convenient forms.
   piece_on_square initial[64];
   piece_on_square final[64];
   unsigned long long seen_black_pieces = 0;
-  square bKPosition = (h8 + 1);
-  square wKPosition = (h8 + 1);
+  square bKPosition = invalid_square;
+  square wKPosition = invalid_square;
   for (int index = a1; index <= h8; ++index)
   {
     piece_walk_type p = get_walk_of_piece_on_square(targetPos[index]);
@@ -598,7 +599,7 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     if (p == Empty)
     {
       final[index].color = no_side;
-      final[index].orig_square = (h8 + 1);
+      final[index].orig_square = invalid_square;
     }
     else
     {
@@ -623,7 +624,7 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     if (p == Empty)
     {
       initial[index].color = no_side;
-      initial[index].orig_square = (h8 + 1);
+      initial[index].orig_square = invalid_square;
     }
     else
     {
@@ -721,20 +722,20 @@ FOUND_MOVED_WHITE_PIECE:;
   final[moved_white_piece_orig_square] = initial[moved_white_piece_orig_square];
   final[moved_white_piece_new_square].piece = Empty;
   final[moved_white_piece_new_square].color = no_side;
-  final[moved_white_piece_new_square].orig_square = (h8 + 1);
+  final[moved_white_piece_new_square].orig_square = invalid_square;
   if (castle_kingside)
   {
     final[h1] = initial[f1];
     final[f1].piece = Empty;
     final[f1].color = no_side;
-    final[f1].orig_square = (h8 + 1);
+    final[f1].orig_square = invalid_square;
   }
   else if (castle_queenside)
   {
     final[a1] = initial[d1];
     final[d1].piece = Empty;
     final[d1].color = no_side;
-    final[d1].orig_square = (h8 + 1);
+    final[d1].orig_square = invalid_square;
   }
   else if ((final[moved_white_piece_orig_square].piece == Pawn) &&
            ((moved_white_piece_new_square - moved_white_piece_orig_square) % 8))
@@ -766,7 +767,7 @@ FOUND_CAPTURE:;
 
   // Restore whatever White pieces are needed to block checks.
   int num_blocks_needed = 0;
-  square blocks[15][6]; // first index = line, second index = possibility along that line; h8 + 1 = sentinel
+  square blocks[15][6]; // first index = line, second index = possibility along that line
   int num_block_poss[15];
   // If White castled, then various squares can't have been attacked.
   if (castle_kingside || castle_queenside)
@@ -896,7 +897,7 @@ FOUND_CAPTURE:;
     }
   }
   // Black can't have been in check.
-  if (bKPosition != (h8 + 1))
+  if (bKPosition != invalid_square)
   {
     if (checked_by_knight(final, bKPosition, Black))
       return false;
@@ -1073,7 +1074,7 @@ FOUND_CAPTURE:;
   unsigned long long pawn_checks_white_king = 0;
   unsigned long long bishop_checks_white_king = 0;
   unsigned long long queen_checks_white_king = 0;
-  if (wKPosition != (h8 + 1))
+  if (wKPosition != invalid_square)
   {
     int const wKRow = (wKPosition / 8);
     int const wKCol = (wKPosition % 8);
