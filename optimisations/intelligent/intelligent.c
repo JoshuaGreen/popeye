@@ -307,26 +307,33 @@ static int get_blocking_pieces_up(stored_position_type const * const store, unsi
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if ((p != Queen) && (p != Rook))
+      case Queen:
+      case Rook:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        if ((p != Queen) && (p != Rook))
-          possible_blocks[num_possible_blocks++] = (square) sq;
-    }
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
+        {
+          case Empty:
+          case Queen:
+          case Rook:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
   }
   return 0;
 }
@@ -340,26 +347,33 @@ static int get_blocking_pieces_down(stored_position_type const * const store, un
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if ((p != Queen) && (p != Rook))
+      case Queen:
+      case Rook:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        if ((p != Queen) && (p != Rook))
-          possible_blocks[num_possible_blocks++] = (square) sq;
-    }
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
+        {
+          case Empty:
+          case Queen:
+          case Rook:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
   }
   return 0;
 }
@@ -374,26 +388,33 @@ static int get_blocking_pieces_left(stored_position_type const * const store, un
     --sq;
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if ((p != Queen) && (p != Rook))
+      case Queen:
+      case Rook:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        if ((p != Queen) && (p != Rook))
-          possible_blocks[num_possible_blocks++] = (square) sq;
-    }
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
+        {
+          case Empty:
+          case Queen:
+          case Rook:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
   }
   return 0;
 }
@@ -407,26 +428,33 @@ static int get_blocking_pieces_right(stored_position_type const * const store, u
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if ((p != Queen) && (p != Rook))
+      case Queen:
+      case Rook:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        if ((p != Queen) && (p != Rook))
-          possible_blocks[num_possible_blocks++] = (square) sq;
-    }
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
+        {
+          case Empty:
+          case Queen:
+          case Rook:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
   }
   return 0;
 }
@@ -440,26 +468,33 @@ static int get_blocking_pieces_upper_left(stored_position_type const * const sto
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if ((p != Queen) && (p != Bishop))
+      case Queen:
+      case Bishop:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        if ((p != Queen) && (p != Bishop))
-          possible_blocks[num_possible_blocks++] = (square) sq;
-    }
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
+        {
+          case Empty:
+          case Queen:
+          case Bishop:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
   }
   return 0;
 }
@@ -473,26 +508,33 @@ static int get_blocking_pieces_upper_right(stored_position_type const * const st
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if ((p != Queen) && (p != Bishop))
+      case Queen:
+      case Bishop:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        if ((p != Queen) && (p != Bishop))
-          possible_blocks[num_possible_blocks++] = (square) sq;
-    }
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
+        {
+          case Empty:
+          case Queen:
+          case Bishop:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
   }
   return 0;
 }
@@ -508,38 +550,39 @@ static int get_blocking_pieces_lower_left(stored_position_type const * const sto
       break;
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if (p == Pawn)
+      case Pawn:
         return (((sq == adjacent) && (color_checked == Black)) ? -1 : 0);
-      if ((p != Queen) && (p != Bishop))
+      case Queen:
+      case Bishop:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        switch (p)
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
         {
-          case Pawn:
-            if ((sq != adjacent) || (color_checked != Black))
-              possible_blocks[num_possible_blocks++] = (square) sq;
-            break;
+          case Empty:
           case Queen:
           case Bishop:
             break;
+          case Pawn:
+            if ((sq == adjacent) && (color_checked == Black))
+              break;
+            // intentional fall-through
           default:
             possible_blocks[num_possible_blocks++] = (square) sq;
         }
-    }
   }
   return 0;
 }
@@ -555,38 +598,39 @@ static int get_blocking_pieces_lower_right(stored_position_type const * const st
       break;
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type p = final[sq].piece;
-    if (p != Empty)
+    switch (final[sq].piece)
     {
-      if (p == King)
+      case Empty:
+        break;
+      case King:
         return ((sq == adjacent) ? -1 : 0);
-      if (p == Pawn)
+      case Pawn:
         return (((sq == adjacent) && (color_checked == Black)) ? -1 : 0);
-      if ((p != Queen) && (p != Bishop))
+      case Queen:
+      case Bishop:
+        if (!num_possible_blocks)
+          return -1;
+        for (int i = 0; i < num_possible_blocks; ++i)
+          blocks[i] = possible_blocks[i];
+        return num_possible_blocks;
+      default:
         return 0;
-      if (!num_possible_blocks)
-        return -1;
-      for (int i = 0; i < num_possible_blocks; ++i)
-        blocks[i] = possible_blocks[i];
-      return num_possible_blocks;
     }
     if (!((square_must_remain_open >> sq) & 1U))
-    {
-      p = store->e[sq];
-      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
-        switch (p)
+      if (TSTFLAG(store->spec[sq], White))
+        switch (store->e[sq])
         {
-          case Pawn:
-            if ((sq != adjacent) || (color_checked != Black))
-              possible_blocks[num_possible_blocks++] = (square) sq;
-            break;
+          case Empty:
           case Queen:
           case Bishop:
             break;
+          case Pawn:
+            if ((sq == adjacent) && (color_checked == Black))
+              break;
+            // intentional fall-through
           default:
             possible_blocks[num_possible_blocks++] = (square) sq;
         }
-    }
   }
   return 0;
 }
