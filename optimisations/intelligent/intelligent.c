@@ -1419,7 +1419,6 @@ boolean target_position_is_ser_h_feasible(boolean const first_move)
             checking_squares = queen_checks_white_king;
             break;
           case Dummy:
-          case Invalid:
             checking_squares = 0;
             break;
           default:
@@ -2041,8 +2040,6 @@ FOUND_GENERIC_PROMOTION:;
         case Dummy:
           if (orig_square != index)
             return false;
-          break;
-        case Invalid:
           break;
         default:
           assert(0);
