@@ -274,11 +274,15 @@ static piece_usage find_piece_usage(PieceIdType id)
 }
 #endif
 
-static square orig_square_of_piece(square const sq_in_target_pos)
+static square PositionInDiagram_to_square(int pos)
 {
-  Flags const flags = being_solved.spec[sq_in_target_pos];
-  square const orig_square = GetPositionInDiagram(flags) - 200;
-  return ((orig_square / 24) * 8) + (orig_square % 24);
+  pos -= 200;
+  return (square) (((pos / 24) * 8) + (pos % 24));
+} 
+
+static square orig_square_of_piece(Flags const flags)
+{
+  return PositionInDiagram_to_square(GetPositionInDiagram(flags));
 }
 
 typedef struct {
@@ -287,16 +291,21 @@ typedef struct {
   square orig_square;
 } piece_on_square;
 
-static int get_blocking_pieces_up(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static piece_on_square target_before_white_move[nr_squares_on_board];
+static int num_extra_blocks_needed;
+square extra_blocks[15][6]; // first index = line, second index = possibility along that line
+int num_extra_block_poss[15];
+
+static int get_blocking_pieces_up(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
   int const adjacent = (((int) square_checked) + 8);
-  for (int sq = adjacent; sq < 64; sq += 8)
+  for (int sq = adjacent; sq < nr_squares_on_board; sq += 8)
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -309,14 +318,18 @@ static int get_blocking_pieces_up(piece_on_square const * const init, unsigned l
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        if ((p != Queen) && (p != Rook))
+          possible_blocks[num_possible_blocks++] = (square) sq;
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_down(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_down(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
@@ -325,7 +338,7 @@ static int get_blocking_pieces_down(piece_on_square const * const init, unsigned
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -338,14 +351,18 @@ static int get_blocking_pieces_down(piece_on_square const * const init, unsigned
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        if ((p != Queen) && (p != Rook))
+          possible_blocks[num_possible_blocks++] = (square) sq;
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_left(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_left(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
@@ -355,7 +372,7 @@ static int get_blocking_pieces_left(piece_on_square const * const init, unsigned
     --sq;
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -368,14 +385,18 @@ static int get_blocking_pieces_left(piece_on_square const * const init, unsigned
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        if ((p != Queen) && (p != Rook))
+          possible_blocks[num_possible_blocks++] = (square) sq;
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_right(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_right(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
@@ -384,7 +405,7 @@ static int get_blocking_pieces_right(piece_on_square const * const init, unsigne
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -397,23 +418,27 @@ static int get_blocking_pieces_right(piece_on_square const * const init, unsigne
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        if ((p != Queen) && (p != Rook))
+          possible_blocks[num_possible_blocks++] = (square) sq;
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_upper_left(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_upper_left(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
   int const adjacent = (((int) square_checked) + 7);
-  for (int sq = adjacent; sq < 64; sq += 7)
+  for (int sq = adjacent; sq < nr_squares_on_board; sq += 7)
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -426,23 +451,27 @@ static int get_blocking_pieces_upper_left(piece_on_square const * const init, un
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        if ((p != Queen) && (p != Bishop))
+          possible_blocks[num_possible_blocks++] = (square) sq;
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_upper_right(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_upper_right(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
   int const adjacent = (((int) square_checked) + 9);
-  for (int sq = adjacent; sq < 64; sq += 9)
+  for (int sq = adjacent; sq < nr_squares_on_board; sq += 9)
   {
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -455,14 +484,18 @@ static int get_blocking_pieces_upper_right(piece_on_square const * const init, u
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        if ((p != Queen) && (p != Bishop))
+          possible_blocks[num_possible_blocks++] = (square) sq;
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_lower_left(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_lower_left(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
@@ -473,7 +506,7 @@ static int get_blocking_pieces_lower_left(piece_on_square const * const init, un
       break;
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -488,14 +521,28 @@ static int get_blocking_pieces_lower_left(piece_on_square const * const init, un
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        switch (p)
+        {
+          case Pawn:
+            if ((sq != adjacent) || (color_checked != Black))
+              possible_blocks[num_possible_blocks++] = (square) sq;
+            break;
+          case Queen:
+          case Bishop:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
+    }
   }
   return 0;
 }
 
-static int get_blocking_pieces_lower_right(piece_on_square const * const init, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
+static int get_blocking_pieces_lower_right(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
   square possible_blocks[7];
@@ -506,7 +553,7 @@ static int get_blocking_pieces_lower_right(piece_on_square const * const init, u
       break;
     if (final[sq].color == color_checked)
       return 0;
-    piece_walk_type const p = final[sq].piece;
+    piece_walk_type p = final[sq].piece;
     if (p != Empty)
     {
       if (p == King)
@@ -521,9 +568,23 @@ static int get_blocking_pieces_lower_right(piece_on_square const * const init, u
         blocks[i] = possible_blocks[i];
       return num_possible_blocks;
     }
-    if ((init[sq].color == White) &&
-        !((square_must_remain_open >> sq) & 1U))
-      possible_blocks[num_possible_blocks++] = (square) sq;
+    if (!((square_must_remain_open >> sq) & 1U))
+    {
+      p = store->e[sq];
+      if ((p != Empty) && TSTFLAG(store->spec[sq], White))
+        switch (p)
+        {
+          case Pawn:
+            if ((sq != adjacent) || (color_checked != Black))
+              possible_blocks[num_possible_blocks++] = (square) sq;
+            break;
+          case Queen:
+          case Bishop:
+            break;
+          default:
+            possible_blocks[num_possible_blocks++] = (square) sq;
+        }
+    }
   }
   return 0;
 }
@@ -571,7 +632,7 @@ static boolean checked_by_knight(piece_on_square const * const final, square con
   return false;
 }
 
-static boolean feasible_ser_h_position(stored_position_type const *const initPosition, square const * const targetPos)
+static boolean get_target_before_white_move(stored_position_type const * const store)
 {
   enum {
     a1, b1, c1, d1, e1, f1, g1, h1,
@@ -581,58 +642,47 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     a5, b5, c5, d5, e5, f5, g5, h5,
     a6, b6, c6, d6, e6, f6, g6, h6,
     a7, b7, c7, d7, e7, f7, g7, h7,
-    a8, b8, c8, d8, e8, f8, g8, h8,
-    invalid_square
+    a8, b8, c8, d8, e8, f8, g8, h8
   };
 
-  // Convert the positions to more convenient forms.
-  piece_on_square initial[64];
-  piece_on_square final[64];
+  // Convert the position to a more convenient form.
   unsigned long long seen_black_pieces = 0;
-  square bKPosition = invalid_square;
-  square wKPosition = invalid_square;
+  square bKPosition = nr_squares_on_board;
+  square wKPosition = nr_squares_on_board;
   for (int index = a1; index <= h8; ++index)
   {
-    piece_walk_type p = get_walk_of_piece_on_square(targetPos[index]);
-    final[index].piece = p;
-    if (p == Empty)
+    target_before_white_move[index].piece = Empty;
+    target_before_white_move[index].color = no_side;
+    target_before_white_move[index].orig_square = nr_squares_on_board;
+  }
+  for (PieceIdType id = 0; id <= MaxPieceId; ++id)
+  {
+    square const diagram_square = target_position[id].diagram_square;
+    if (diagram_square != initsquare)
     {
-      final[index].color = no_side;
-      final[index].orig_square = invalid_square;
-    }
-    else
-    {
-      square const orig_square = orig_square_of_piece(targetPos[index]);
-      final[index].orig_square = orig_square;
-      if (TSTFLAG(being_solved.spec[targetPos[index]], White))
+      Flags const flags = target_position[id].flags;
+      square const orig_square = orig_square_of_piece(flags);
+      if (orig_square > h8)
+        return false;
+      piece_walk_type p = target_position[id].type;
+      if (p == Invalid)
+        p = nr_piece_walks;
+      int const index = PositionInDiagram_to_square(diagram_square);
+      target_before_white_move[index].piece = p;
+      target_before_white_move[index].orig_square = orig_square;
+      if (TSTFLAG(flags, White))
       {
         if (p == King)
           wKPosition = index;
-        final[index].color = White;
+        target_before_white_move[index].color = White;
       }
       else
       {
         if (p == King)
           bKPosition = index;
-        final[index].color = Black;
+        target_before_white_move[index].color = Black;
         seen_black_pieces |= (1ULL << orig_square);
       }
-    }
-
-    p = initPosition->e[index];
-    initial[index].piece = p;
-    if (p == Empty)
-    {
-      initial[index].color = no_side;
-      initial[index].orig_square = invalid_square;
-    }
-    else
-    {
-      if (TSTFLAG(initPosition->spec[index], White))
-        initial[index].color = White;
-      else
-        initial[index].color = Black;
-      initial[index].orig_square = index;
     }
   }
 
@@ -643,22 +693,26 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
   int moved_white_piece_orig_square;
   int moved_white_piece_new_square;
   unsigned long long square_must_remain_open;
-  if ((wKPosition == g1) && (final[g1].orig_square == e1))
+  if ((wKPosition == g1) && (target_before_white_move[g1].orig_square == e1))
   {
-    if ((final[f1].piece != Rook) || (final[f1].color != White) || (final[f1].orig_square != h1))
+    if (TSTCASTLINGFLAGMASK(White, k_castling) != k_castling)
       return false;
-    if ((final[e1].piece != Empty) || (final[h1].piece != Empty))
+    if ((target_before_white_move[f1].piece != Rook) || (target_before_white_move[f1].color != White) || (target_before_white_move[f1].orig_square != h1))
+      return false;
+    if ((target_before_white_move[e1].piece != Empty) || (target_before_white_move[h1].piece != Empty))
       return false;
     castle_kingside = true;
     moved_white_piece_orig_square = e1;
     moved_white_piece_new_square = g1;
     square_must_remain_open = ((1ULL << f1) | (1ULL << g1));
   }
-  else if ((wKPosition == c1) && (final[c1].orig_square == e1))
+  else if ((wKPosition == c1) && (target_before_white_move[c1].orig_square == e1))
   {
-    if ((final[d1].piece != Rook) || (final[d1].color != White) || (final[d1].orig_square != a1))
+    if (TSTCASTLINGFLAGMASK(White, q_castling) != q_castling)
       return false;
-    if ((final[a1].piece != Empty) || (final[b1].piece != Empty) || (final[e1].piece != Empty))
+    if ((target_before_white_move[d1].piece != Rook) || (target_before_white_move[d1].color != White) || (target_before_white_move[d1].orig_square != a1))
+      return false;
+    if ((target_before_white_move[a1].piece != Empty) || (target_before_white_move[b1].piece != Empty) || (target_before_white_move[e1].piece != Empty))
       return false;
     castle_queenside = true;
     moved_white_piece_orig_square = e1;
@@ -670,20 +724,20 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
     square_must_remain_open = 0;
     for (int index = a1; index <= h8; ++index)
     {
-      if (final[index].color == White)
+      if (target_before_white_move[index].color == White)
       {
-        int orig_square = final[index].orig_square;
+        int orig_square = target_before_white_move[index].orig_square;
         if (orig_square != index)
         {
           // the square White moves from must be empty
-          if (final[orig_square].piece != Empty)
+          if (target_before_white_move[orig_square].piece != Empty)
             return false;
 
           moved_white_piece_orig_square = orig_square;
           moved_white_piece_new_square = index;
 
           // a White line piece can't have jumped over anything
-          piece_walk_type const p = initial[orig_square].piece;
+          piece_walk_type const p = store->e[orig_square];
           if (p != Knight)
           {
             // line pieces cannot have jumped over anything
@@ -704,7 +758,7 @@ static boolean feasible_ser_h_position(stored_position_type const *const initPos
               --step;
             while ((orig_square += step) != index)
             {
-              if (final[orig_square].piece != Empty)
+              if (target_before_white_move[orig_square].piece != Empty)
                 return false;
               square_must_remain_open |= (1ULL << orig_square);
             }
@@ -719,270 +773,454 @@ FOUND_MOVED_WHITE_PIECE:;
   }
 
   // retract White's last move
-  final[moved_white_piece_orig_square] = initial[moved_white_piece_orig_square];
-  final[moved_white_piece_new_square].piece = Empty;
-  final[moved_white_piece_new_square].color = no_side;
-  final[moved_white_piece_new_square].orig_square = invalid_square;
+  target_before_white_move[moved_white_piece_orig_square].piece = store->e[moved_white_piece_orig_square];
+  target_before_white_move[moved_white_piece_orig_square].color = White;
+  target_before_white_move[moved_white_piece_orig_square].orig_square = orig_square_of_piece(store->spec[moved_white_piece_orig_square]);
+  target_before_white_move[moved_white_piece_new_square].piece = Empty;
+  target_before_white_move[moved_white_piece_new_square].color = no_side;
+  target_before_white_move[moved_white_piece_new_square].orig_square = nr_squares_on_board;
   if (castle_kingside)
   {
-    final[h1] = initial[f1];
-    final[f1].piece = Empty;
-    final[f1].color = no_side;
-    final[f1].orig_square = invalid_square;
+    target_before_white_move[h1].piece = Rook;
+    target_before_white_move[h1].color = White;
+    target_before_white_move[h1].orig_square = h1;
+    target_before_white_move[f1].piece = Empty;
+    target_before_white_move[f1].color = no_side;
+    target_before_white_move[f1].orig_square = nr_squares_on_board;
   }
   else if (castle_queenside)
   {
-    final[a1] = initial[d1];
-    final[d1].piece = Empty;
-    final[d1].color = no_side;
-    final[d1].orig_square = invalid_square;
+    target_before_white_move[a1].piece = Rook;
+    target_before_white_move[a1].color = White;
+    target_before_white_move[a1].orig_square = a1;
+    target_before_white_move[d1].piece = Empty;
+    target_before_white_move[d1].color = no_side;
+    target_before_white_move[d1].orig_square = nr_squares_on_board;
   }
-  else if ((final[moved_white_piece_orig_square].piece == Pawn) &&
+  else if ((target_before_white_move[moved_white_piece_orig_square].piece == Pawn) &&
            ((moved_white_piece_new_square - moved_white_piece_orig_square) % 8))
     pawn_capture = true;
+  boolean found_capture = false;
   for (int index = a1; index <= h8; ++index)
   {
-    if ((initial[index].color == Black) &&
-        !((seen_black_pieces >> index) & 1U))
+    if (TSTFLAG(store->spec[index], Black))
     {
-      // some moves can't be captures
-      if (castle_kingside || castle_queenside)
-        return false;
-      if ((final[moved_white_piece_orig_square].piece == Pawn) && !pawn_capture)
-        return false;
+      square const orig_square = orig_square_of_piece(store->spec[index]);
+      if (!((seen_black_pieces >> orig_square) & 1U))
+      {
+        if (found_capture)
+          return false;
 
-      if (initial[index].piece == Pawn)
-        final[moved_white_piece_new_square].piece = nr_piece_walks; // The pawn might have promoted.
-      else
-        final[moved_white_piece_new_square].piece = initial[index].piece;
-      final[moved_white_piece_new_square].color = initial[index].color;
-      final[moved_white_piece_new_square].orig_square = initial[index].orig_square;
-      goto FOUND_CAPTURE;
+        // some moves can't be captures
+        if (castle_kingside || castle_queenside)
+          return false;
+        if ((target_before_white_move[moved_white_piece_orig_square].piece == Pawn) && !pawn_capture)
+          return false;
+
+        if (store->e[index] == Pawn)
+          target_before_white_move[moved_white_piece_new_square].piece = nr_piece_walks; // The pawn might have promoted.
+        else
+          target_before_white_move[moved_white_piece_new_square].piece = store->e[index];
+        target_before_white_move[moved_white_piece_new_square].color = Black;
+        target_before_white_move[moved_white_piece_new_square].orig_square = orig_square;
+        found_capture = true;
+      }
     }
   }
-  if (pawn_capture)
-    return false;
-FOUND_CAPTURE:;
+  if (found_capture)
+  {
+    if (pawn_capture)
+      return false;
+  }
+  else
+    square_must_remain_open |= (1ULL << moved_white_piece_new_square);
   // TODO: Should we consider the possibility that White's move was an en passant capture justified by retrograde analysis?
 
   // Restore whatever White pieces are needed to block checks.
-  int num_blocks_needed = 0;
-  square blocks[15][6]; // first index = line, second index = possibility along that line
-  int num_block_poss[15];
+  num_extra_blocks_needed = 0;
+
   // If White castled, then various squares can't have been attacked.
   if (castle_kingside || castle_queenside)
   {
-    if (checked_by_knight(final, e1, White))
+    if (checked_by_knight(target_before_white_move, e1, White))
       return false;
     int num_blocks_tmp;
     if (castle_kingside)
     {
-      if (checked_by_knight(final, f1, White))
+      if (checked_by_knight(target_before_white_move, f1, White))
         return false;
-      num_blocks_tmp = get_blocking_pieces_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+      num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
-      num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], f1, White);
+      num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], f1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
-      num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], f1, White);
+      num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], f1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
-      num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], f1, White);
+      num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], f1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
     }
     else
     {
-      if (checked_by_knight(final, d1, White))
+      if (checked_by_knight(target_before_white_move, d1, White))
         return false;
-      num_blocks_tmp = get_blocking_pieces_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+      num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
-      num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], d1, White);
+      num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], d1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
-      num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], d1, White);
+      num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], d1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
-      num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], d1, White);
+      num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], d1, White);
       if (num_blocks_tmp < 0)
         return false;
       if (num_blocks_tmp)
       {
         if (num_blocks_tmp == 1)
-          final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+        {
+          square const block_square = extra_blocks[num_extra_blocks_needed][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
         else
-          num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
       }
     }
-    num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+    num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], e1, White);
+    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
   }
   // Black can't have been in check.
-  if (bKPosition != invalid_square)
+  if (bKPosition != nr_squares_on_board)
   {
-    if (checked_by_knight(final, bKPosition, Black))
+    if (checked_by_knight(target_before_white_move, bKPosition, Black))
       return false;
-    int num_blocks_tmp = get_blocking_pieces_up(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    int num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_upper_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_lower_right(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_lower_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_down(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_down(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_lower_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_lower_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_upper_left(initial, square_must_remain_open, final, blocks[num_blocks_needed], bKPosition, Black);
+    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
     if (num_blocks_tmp < 0)
       return false;
     if (num_blocks_tmp)
     {
       if (num_blocks_tmp == 1)
-        final[blocks[num_blocks_needed][0]] = initial[blocks[num_blocks_needed][0]];
+      {
+        square const block_square = extra_blocks[num_extra_blocks_needed][0];
+        target_before_white_move[block_square].piece = store->e[block_square];
+        target_before_white_move[block_square].color = White;
+        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+      }
       else
-        num_block_poss[num_blocks_needed++] = num_blocks_tmp;
+        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
     }
   }
-  // TODO: What to do about the num_blocks_needed lines on which there are multiple possible blocks?
+  // TODO: Can/Should we add these extra blockers to target_position?
+
+  return true;
+}
+
+boolean target_position_is_ser_h_feasible(boolean const first_move)
+{
+  enum {
+    a1, b1, c1, d1, e1, f1, g1, h1,
+    a2, b2, c2, d2, e2, f2, g2, h2,
+    a3, b3, c3, d3, e3, f3, g3, h3,
+    a4, b4, c4, d4, e4, f4, g4, h4,
+    a5, b5, c5, d5, e5, f5, g5, h5,
+    a6, b6, c6, d6, e6, f6, g6, h6,
+    a7, b7, c7, d7, e7, f7, g7, h7,
+    a8, b8, c8, d8, e8, f8, g8, h8
+  };
+
+  // Convert the positions to more convenient forms.
+  piece_on_square initial[nr_squares_on_board];
+  piece_on_square final[nr_squares_on_board];
+  square wKPosition = nr_squares_on_board;
+  square cur_square_of_piece[nr_squares_on_board];
+  for (int index = a1; index <= h8; ++index)
+    cur_square_of_piece[index] = nr_squares_on_board;
+  for (int index = a1; index <= h8; ++index)
+  {
+    final[index] = target_before_white_move[index];
+
+    square const cur_square = boardnum[index];
+    piece_walk_type p = get_walk_of_piece_on_square(cur_square);
+    if (p == Invalid)
+      p = nr_piece_walks;
+    initial[index].piece = p;
+    if (p == Empty)
+    {
+      initial[index].color = no_side;
+      initial[index].orig_square = nr_squares_on_board;
+    }
+    else
+    {
+      Flags const flags = being_solved.spec[cur_square];
+      if (TSTFLAG(flags, White))
+      {
+        if (p == King)
+          wKPosition = index;
+        initial[index].color = White;
+      }
+      else
+        initial[index].color = Black;
+      square const orig_square = orig_square_of_piece(flags);
+      initial[index].orig_square = orig_square;
+      cur_square_of_piece[orig_square] = index;
+    }
+  }
+
+  // Restore whatever White pieces are needed to block checks.
+  for (int i = 0; i < num_extra_blocks_needed; ++i)
+  {
+    int const num_poss = num_extra_block_poss[i];
+    int num_new_poss = 0;
+    square new_poss[6];
+    for (int j = 0; j < num_poss; ++j)
+    {
+      int const block_sq = extra_blocks[i][j];
+      if (initial[block_sq].color == White)
+        new_poss[num_new_poss++] = block_sq;
+    }
+    if (!num_new_poss)
+      return false;
+    if (num_new_poss == 1)
+      final[new_poss[0]] = initial[new_poss[0]];
+    // TODO: consider blocks when num_new_poss > 1 ?
+  }
 
   // What squares have White's pieces guarded throughout?
   unsigned long long guarded_by_white = 0;
@@ -1074,7 +1312,7 @@ FOUND_CAPTURE:;
   unsigned long long pawn_checks_white_king = 0;
   unsigned long long bishop_checks_white_king = 0;
   unsigned long long queen_checks_white_king = 0;
-  if (wKPosition != invalid_square)
+  if (wKPosition != nr_squares_on_board)
   {
     int const wKRow = (wKPosition / 8);
     int const wKCol = (wKPosition % 8);
@@ -1395,12 +1633,12 @@ FOUND_ROOK_MOVE:
   } while (prev_piece_never_moved != piece_never_moved);
 
   // Where could pieces end up?
-  unsigned long long pawn_could_reach[64];
-  unsigned long long knight_could_reach[64];
-  unsigned long long bishop_could_reach[64];
-  unsigned long long rook_could_reach[64];
-  unsigned long long queen_could_reach[64];
-  unsigned long long king_could_reach[64];
+  unsigned long long pawn_could_reach[nr_squares_on_board + 1];
+  unsigned long long knight_could_reach[nr_squares_on_board + 1];
+  unsigned long long bishop_could_reach[nr_squares_on_board + 1];
+  unsigned long long rook_could_reach[nr_squares_on_board + 1];
+  unsigned long long queen_could_reach[nr_squares_on_board + 1];
+  unsigned long long king_could_reach[nr_squares_on_board + 1];
   for (int index = a1; index <= h8; ++index)
   {
     unsigned long long cur_bit = (1ULL << index);
@@ -1439,24 +1677,25 @@ FOUND_ROOK_MOVE:
     }
   }
   // Handle an initial en passant capture.
-  for (int index = a4; index <= h4; ++index)
-    if ((initial[index].piece == Pawn) && (initial[index].color == Black) && !((pawn_checks_white_king >> index) & 1U))
-    {
-      if (index > a4)
-        if ((initial[index - 1].piece == Pawn) &&
-            (initial[index - 1].color == White) &&
-            (initial[index - 9].piece == Empty) &&
-            (initial[index - 17].piece == Empty) &&
-            !((piece_never_moved >> (index - 1)) & 1U))
-          pawn_could_reach[index] |= pawn_could_reach[index - 9];
-      if (index < h4)
-        if ((initial[index + 1].piece == Pawn) &&
-            (initial[index + 1].color == White) &&
-            (initial[index - 7].piece == Empty) &&
-            (initial[index - 15].piece == Empty) &&
-            !((piece_never_moved >> (index + 1)) & 1U))
-          pawn_could_reach[index] |= pawn_could_reach[index - 7];
-    }
+  if (first_move)
+    for (int index = a4; index <= h4; ++index)
+      if ((initial[index].piece == Pawn) && (initial[index].color == Black) && !((pawn_checks_white_king >> index) & 1U))
+      {
+        if (index > a4)
+          if ((initial[index - 1].piece == Pawn) &&
+              (initial[index - 1].color == White) &&
+              (initial[index - 9].piece == Empty) &&
+              (initial[index - 17].piece == Empty) &&
+              !((piece_never_moved >> (index - 1)) & 1U))
+            pawn_could_reach[index] |= pawn_could_reach[index - 9];
+        if (index < h4)
+          if ((initial[index + 1].piece == Pawn) &&
+              (initial[index + 1].color == White) &&
+              (initial[index - 7].piece == Empty) &&
+              (initial[index - 15].piece == Empty) &&
+              !((piece_never_moved >> (index + 1)) & 1U))
+            pawn_could_reach[index] |= pawn_could_reach[index - 7];
+      }
 
   // Where could Knights end up?
   boolean found_another_move;
@@ -1684,15 +1923,23 @@ FOUND_ROOK_MOVE:
   } while (found_another_move);
 
   // Promoted pieces could be anything.
-  unsigned long long promoted_piece_could_reach[64]; // = knight | bishop | rook | queen
+  unsigned long long promoted_piece_could_reach[nr_squares_on_board + 1]; // = knight | bishop | rook | queen
   for (int index = a1; index <= h8; ++index)
     promoted_piece_could_reach[index] = (knight_could_reach[index] | bishop_could_reach[index] | rook_could_reach[index] | queen_could_reach[index]);
+
+  pawn_could_reach[nr_squares_on_board] = 0;
+  knight_could_reach[nr_squares_on_board] = 0;
+  bishop_could_reach[nr_squares_on_board] = 0;
+  rook_could_reach[nr_squares_on_board] = 0;
+  queen_could_reach[nr_squares_on_board] = 0;
+  king_could_reach[nr_squares_on_board] = 0;
+  promoted_piece_could_reach[nr_squares_on_board] = 0;
 
   // Could pieces have reached their final squares?
   for (int index = a1; index <= h8; ++index)
     if (final[index].color == Black)
     {
-      int const orig_square = final[index].orig_square;
+      int const orig_square = cur_square_of_piece[final[index].orig_square];
       int const orig_piece = initial[final[index].orig_square].piece;
       switch (final[index].piece)
       {
@@ -1844,10 +2091,10 @@ void solve_target_position(slice_index si)
     }
   }
 
-  if (feasible_ser_h_position(&initial_position, boardnum)) {
+  /* solve the problem */
+  ResetPosition(&initial_position);
 
-    /* solve the problem */
-    ResetPosition(&initial_position);
+  if (get_target_before_white_move(&initial_position) && target_position_is_ser_h_feasible(true)) {
 
 #if defined(DETAILS)
     TraceText("target position:\n");
@@ -1860,8 +2107,6 @@ void solve_target_position(slice_index si)
       solutions_found = true;
 
   }
-  else
-    ResetPosition(&initial_position);
 
   /* reset the old mating position */
   {
