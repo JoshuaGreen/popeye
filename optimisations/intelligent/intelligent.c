@@ -293,8 +293,10 @@ typedef struct {
 
 static piece_on_square target_before_white_move[nr_squares_on_board];
 static int num_extra_blocks_needed;
-square extra_blocks[15][6]; // first index = line, second index = possibility along that line
-int num_extra_block_poss[15];
+static square extra_blocks[15][6]; // first index = line, second index = possibility along that line
+static int num_extra_block_poss[15];
+static boolean castle_kingside;
+static boolean castle_queenside;
 
 static int get_blocking_pieces_up(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
@@ -687,16 +689,14 @@ static boolean get_target_before_white_move(stored_position_type const * const s
   }
 
   // ensure that White's move was legal
-  boolean castle_kingside = false;
-  boolean castle_queenside = false;
+  castle_kingside = false;
+  castle_queenside = false;
   boolean pawn_capture = false;
   int moved_white_piece_orig_square;
   int moved_white_piece_new_square;
   unsigned long long square_must_remain_open;
   if ((wKPosition == g1) && (target_before_white_move[g1].orig_square == e1))
   {
-    if (TSTCASTLINGFLAGMASK(White, k_castling) != k_castling)
-      return false;
     if ((target_before_white_move[f1].piece != Rook) || (target_before_white_move[f1].color != White) || (target_before_white_move[f1].orig_square != h1))
       return false;
     if ((target_before_white_move[e1].piece != Empty) || (target_before_white_move[h1].piece != Empty))
@@ -708,8 +708,6 @@ static boolean get_target_before_white_move(stored_position_type const * const s
   }
   else if ((wKPosition == c1) && (target_before_white_move[c1].orig_square == e1))
   {
-    if (TSTCASTLINGFLAGMASK(White, q_castling) != q_castling)
-      return false;
     if ((target_before_white_move[d1].piece != Rook) || (target_before_white_move[d1].color != White) || (target_before_white_move[d1].orig_square != a1))
       return false;
     if ((target_before_white_move[a1].piece != Empty) || (target_before_white_move[b1].piece != Empty) || (target_before_white_move[e1].piece != Empty))
@@ -1165,6 +1163,17 @@ boolean target_position_is_ser_h_feasible(boolean const first_move)
     a8, b8, c8, d8, e8, f8, g8, h8
   };
 
+  if (castle_kingside)
+  {
+    if (TSTCASTLINGFLAGMASK(White, k_castling) != k_castling)
+      return false;
+  }
+  else if (castle_queenside)
+  {
+    if (TSTCASTLINGFLAGMASK(White, q_castling) != q_castling)
+      return false;
+  }
+
   // Convert the positions to more convenient forms.
   piece_on_square initial[nr_squares_on_board];
   piece_on_square final[nr_squares_on_board];
@@ -1174,8 +1183,6 @@ boolean target_position_is_ser_h_feasible(boolean const first_move)
     cur_square_of_piece[index] = nr_squares_on_board;
   for (int index = a1; index <= h8; ++index)
   {
-    final[index] = target_before_white_move[index];
-
     square const cur_square = boardnum[index];
     piece_walk_type p = get_walk_of_piece_on_square(cur_square);
     if (p == Invalid)
@@ -1201,9 +1208,13 @@ boolean target_position_is_ser_h_feasible(boolean const first_move)
       initial[index].orig_square = orig_square;
       cur_square_of_piece[orig_square] = index;
     }
+
+    final[index] = target_before_white_move[index];
+    if ((final[index].color == White) && (initial[index].color != White))
+      return false;
   }
 
-  // Restore whatever White pieces are needed to block checks.
+  // Restore whatever additional White pieces are needed to block checks.
   for (int i = 0; i < num_extra_blocks_needed; ++i)
   {
     int const num_poss = num_extra_block_poss[i];
