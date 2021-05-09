@@ -1013,12 +1013,12 @@ FOUND_MOVED_WHITE_PIECE:;
         target_before_white_move[blocking_square].color = White;
         target_before_white_move[blocking_square].orig_square = orig_square_of_piece(store->spec[blocking_square]);
         --num_extra_blocks_needed_to_protect_white;
-        for (int j = i; j < num_extra_blocks_needed_to_protect_white; ++j)
+        if (i < num_extra_blocks_needed_to_protect_white)
         {
-          num_poss = num_extra_block_poss_to_protect_white[j + 1];
-          num_extra_block_poss_to_protect_white[j] = num_poss;
-          for (int k = 0; k < num_poss; ++k)
-            extra_blocks_to_protect_white[j][k] = extra_blocks_to_protect_white[j + 1][k];
+          num_poss = num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white];
+          num_extra_block_poss_to_protect_white[i] = num_poss;
+          for (int j = 0; j < num_poss; ++j)
+            extra_blocks_to_protect_white[i][j] = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][j];
         }
       }
       else
