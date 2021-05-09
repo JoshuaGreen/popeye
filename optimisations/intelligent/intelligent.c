@@ -291,13 +291,6 @@ typedef struct {
   square orig_square;
 } piece_on_square;
 
-static piece_on_square target_before_white_move[nr_squares_on_board];
-static int num_extra_blocks_needed;
-static square extra_blocks[15][6]; // first index = line, second index = possibility along that line
-static int num_extra_block_poss[15];
-static boolean castle_kingside;
-static boolean castle_queenside;
-
 static int get_blocking_pieces_up(stored_position_type const * const store, unsigned long long const square_must_remain_open, piece_on_square const * const final, square * const blocks, square const square_checked, Side const color_checked)
 {
   int num_possible_blocks = 0;
@@ -635,48 +628,60 @@ static int get_blocking_pieces_lower_right(stored_position_type const * const st
   return 0;
 }
 
-static boolean checked_by_knight(piece_on_square const * const final, square const square_checked, Side const color_checked)
+static int num_knight_checks(piece_on_square const * const final, square const square_checked, Side const color_checked)
 {
   int const row = (square_checked / 8);
   int const col = (square_checked % 8);
+  int num_checks = 0;
   if (row)
   {
     if (col > 1)
       if ((final[square_checked - 10].piece == Knight) && (final[square_checked - 10].color != color_checked))
-        return true;
+        ++num_checks;
     if (col < 6)
       if ((final[square_checked - 6].piece == Knight) && (final[square_checked - 6].color != color_checked))
-        return true;
+        ++num_checks;
     if (row > 1)
     {
       if (col)
         if ((final[square_checked - 17].piece == Knight) && (final[square_checked - 17].color != color_checked))
-          return true;
+          ++num_checks;
       if (col < 7)
         if ((final[square_checked - 15].piece == Knight) && (final[square_checked - 15].color != color_checked))
-          return true;
+          ++num_checks;
     }
   }
   if (row < 7)
   {
     if (col > 1)
       if ((final[square_checked + 6].piece == Knight) && (final[square_checked + 6].color != color_checked))
-        return true;
+        ++num_checks;
     if (col < 6)
       if ((final[square_checked + 10].piece == Knight) && (final[square_checked + 10].color != color_checked))
-        return true;
+        ++num_checks;
     if (row < 6)
     {
       if (col)
         if ((final[square_checked + 15].piece == Knight) && (final[square_checked + 15].color != color_checked))
-          return true;
+          ++num_checks;
       if (col < 7)
         if ((final[square_checked + 17].piece == Knight) && (final[square_checked + 17].color != color_checked))
-          return true;
+          ++num_checks;
     }
   }
-  return false;
+  return num_checks;
 }
+
+static piece_on_square target_before_white_move[nr_squares_on_board];
+static int num_extra_blocks_needed_to_protect_white;
+static int num_extra_blocks_needed_to_protect_black;
+static square extra_blocks_to_protect_white[8][6]; // first index = line, second index = possibility along that line
+static square extra_blocks_to_protect_black[8][6]; // first index = line, second index = possibility along that line
+static int num_extra_block_poss_to_protect_white[8];
+static int num_extra_block_poss_to_protect_black[8];
+static int num_unblockable_checks_of_white;
+static boolean castle_kingside;
+static boolean castle_queenside;
 
 static boolean get_target_before_white_move(stored_position_type const * const store)
 {
@@ -821,6 +826,8 @@ FOUND_MOVED_WHITE_PIECE:;
   target_before_white_move[moved_white_piece_new_square].piece = Empty;
   target_before_white_move[moved_white_piece_new_square].color = no_side;
   target_before_white_move[moved_white_piece_new_square].orig_square = nr_squares_on_board;
+  if (target_before_white_move[moved_white_piece_orig_square].piece == King)
+    wKPosition = moved_white_piece_orig_square;
   if (castle_kingside)
   {
     target_before_white_move[h1].piece = Rook;
@@ -869,324 +876,426 @@ FOUND_MOVED_WHITE_PIECE:;
       }
     }
   }
-  if (found_capture)
+  if (!found_capture)
   {
     if (pawn_capture)
       return false;
-  }
-  else
     square_must_remain_open |= (1ULL << moved_white_piece_new_square);
+  }
   // TODO: Should we consider the possibility that White's move was an en passant capture justified by retrograde analysis?
+  
+  num_unblockable_checks_of_white = num_knight_checks(target_before_white_move, wKPosition, White);
+  if (num_unblockable_checks_of_white > 1)
+    return false; // There can be at most one Knight check.
 
   // Restore whatever White pieces are needed to block checks.
-  num_extra_blocks_needed = 0;
+  num_extra_blocks_needed_to_protect_white = 0;
 
-  // If White castled, then various squares can't have been attacked.
-  if (castle_kingside || castle_queenside)
+  int num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
   {
-    if (checked_by_knight(target_before_white_move, e1, White))
-      return false;
-    int num_blocks_tmp;
-    if (castle_kingside)
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_down(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_lower_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+  num_blocks_tmp = get_blocking_pieces_lower_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
+  switch (num_blocks_tmp)
+  {
+    case -1:
+      if (num_unblockable_checks_of_white > 1)
+        return false; // There can be at most 2 checks of White at a time.
+      ++num_unblockable_checks_of_white;
+      break;
+    case 0:
+      break;
+    default:
+      num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+  }
+
+  if (num_unblockable_checks_of_white && (castle_kingside || castle_queenside))
+    // If White castled, no checks are allowed.
+    return false;
+
+  if ((num_unblockable_checks_of_white == 2) || castle_kingside || castle_queenside)
+    // We have to block all the other checks.
+    for (int i = 0; i < num_extra_blocks_needed_to_protect_white;)
     {
-      if (checked_by_knight(target_before_white_move, f1, White))
-        return false;
-      num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
+      int num_poss = num_extra_block_poss_to_protect_white[i];
+      if (num_poss == 1)
       {
-        if (num_blocks_tmp == 1)
+        // Add this blocker and remove it from the set.
+        square const blocking_square = extra_blocks_to_protect_white[i][0];
+        target_before_white_move[blocking_square].piece = store->e[blocking_square];
+        target_before_white_move[blocking_square].color = White;
+        target_before_white_move[blocking_square].orig_square = orig_square_of_piece(store->spec[blocking_square]);
+        --num_extra_blocks_needed_to_protect_white;
+        for (int j = i; j < num_extra_blocks_needed_to_protect_white; ++j)
         {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+          num_poss = num_extra_block_poss_to_protect_white[j + 1];
+          num_extra_block_poss_to_protect_white[j] = num_poss;
+          for (int k = 0; k < num_poss; ++k)
+            extra_blocks_to_protect_white[j][k] = extra_blocks_to_protect_white[j + 1][k];
         }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-      num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], f1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-      num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], f1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-      num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], f1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-    }
-    else
-    {
-      if (checked_by_knight(target_before_white_move, d1, White))
-        return false;
-      num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-      num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], d1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-      num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], d1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-      num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], d1, White);
-      if (num_blocks_tmp < 0)
-        return false;
-      if (num_blocks_tmp)
-      {
-        if (num_blocks_tmp == 1)
-        {
-          square const block_square = extra_blocks[num_extra_blocks_needed][0];
-          target_before_white_move[block_square].piece = store->e[block_square];
-          target_before_white_move[block_square].color = White;
-          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-        }
-        else
-          num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
-      }
-    }
-    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
-    {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
       }
       else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+        ++i;
+      // TODO: consider blocks when num_extra_block_poss_to_protect_white[i] > 1 ?
     }
-    num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+  // TODO: If num_unblockable_checks_of_white == 2, ensure that they're a possible double-check.
+
+  // If White castled, no checks are allowed and the square the King crossed over also can't have been attacked.
+  if (castle_kingside)
+  {
+    if (num_knight_checks(target_before_white_move, f1, White))
+      return false;      
+    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], f1, White);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], e1, White);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], f1, White);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], f1, White);
+    switch (num_blocks_tmp)
+    {
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
     }
   }
+  else if (castle_queenside)
+  {
+    if (num_knight_checks(target_before_white_move, d1, White))
+      return false;
+    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], d1, White);
+    switch (num_blocks_tmp)
+    {
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], d1, White);
+    switch (num_blocks_tmp)
+    {
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+    }
+    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], d1, White);
+    switch (num_blocks_tmp)
+    {
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
+    }
+  }
+
   // Black can't have been in check.
+  num_extra_blocks_needed_to_protect_black = 0;
   if (bKPosition != nr_squares_on_board)
   {
-    if (checked_by_knight(target_before_white_move, bKPosition, Black))
+    if (num_knight_checks(target_before_white_move, bKPosition, Black))
       return false;
-    int num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_up(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_lower_right(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_lower_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_down(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_down(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_lower_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_lower_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
-    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks[num_extra_blocks_needed], bKPosition, Black);
-    if (num_blocks_tmp < 0)
-      return false;
-    if (num_blocks_tmp)
+    num_blocks_tmp = get_blocking_pieces_upper_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black], bKPosition, Black);
+    switch (num_blocks_tmp)
     {
-      if (num_blocks_tmp == 1)
-      {
-        square const block_square = extra_blocks[num_extra_blocks_needed][0];
-        target_before_white_move[block_square].piece = store->e[block_square];
-        target_before_white_move[block_square].color = White;
-        target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
-      }
-      else
-        num_extra_block_poss[num_extra_blocks_needed++] = num_blocks_tmp;
+      case -1:
+        return false;
+      case 0:
+        break;
+      case 1:
+        {
+          square const block_square = extra_blocks_to_protect_black[num_extra_blocks_needed_to_protect_black][0];
+          target_before_white_move[block_square].piece = store->e[block_square];
+          target_before_white_move[block_square].color = White;
+          target_before_white_move[block_square].orig_square = orig_square_of_piece(store->spec[block_square]);
+        }
+        break;
+      default:
+        num_extra_block_poss_to_protect_black[num_extra_blocks_needed_to_protect_black++] = num_blocks_tmp;
     }
   }
   // TODO: Can/Should we add these extra blockers to target_position?
@@ -1259,14 +1368,35 @@ boolean target_position_is_ser_h_feasible(boolean const first_move)
   }
 
   // Restore whatever additional White pieces are needed to block checks.
-  for (int i = 0; i < num_extra_blocks_needed; ++i)
+  if ((num_unblockable_checks_of_white == 2) || castle_kingside || castle_queenside)
+    // We have to block all the other checks.
+    for (int i = 0; i < num_extra_blocks_needed_to_protect_white; ++i)
+    {
+      int const num_poss = num_extra_block_poss_to_protect_white[i];
+      int num_new_poss = 0;
+      square new_poss[6];
+      for (int j = 0; j < num_poss; ++j)
+      {
+        int const block_sq = extra_blocks_to_protect_white[i][j];
+        if (initial[block_sq].color == White)
+          new_poss[num_new_poss++] = block_sq;
+      }
+      if (!num_new_poss)
+        return false;
+      if (num_new_poss == 1)
+        final[new_poss[0]] = initial[new_poss[0]];
+      // TODO: consider blocks when num_new_poss > 1 ?
+    }
+    // TODO: Consider that these added pieces might check Black.
+
+  for (int i = 0; i < num_extra_blocks_needed_to_protect_black; ++i)
   {
-    int const num_poss = num_extra_block_poss[i];
+    int const num_poss = num_extra_block_poss_to_protect_black[i];
     int num_new_poss = 0;
     square new_poss[6];
     for (int j = 0; j < num_poss; ++j)
     {
-      int const block_sq = extra_blocks[i][j];
+      int const block_sq = extra_blocks_to_protect_black[i][j];
       if (initial[block_sq].color == White)
         new_poss[num_new_poss++] = block_sq;
     }
@@ -1276,6 +1406,7 @@ boolean target_position_is_ser_h_feasible(boolean const first_move)
       final[new_poss[0]] = initial[new_poss[0]];
     // TODO: consider blocks when num_new_poss > 1 ?
   }
+  // TODO: If num_unblockable_checks_of_white == 2, ensure that they're a possible double-check.
 
   // What squares have White's pieces guarded throughout?
   unsigned long long guarded_by_white = 0;
