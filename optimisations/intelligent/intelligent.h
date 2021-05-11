@@ -73,4 +73,6 @@ boolean is_line_empty(square start, square end, int dir);
  */
 boolean init_intelligent_mode(slice_index si);
 
+boolean target_position_is_ser_h_feasible(boolean first_move);
+
 #endif
