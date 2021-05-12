@@ -993,7 +993,7 @@ FOUND_MOVED_WHITE_PIECE:;
         return false; // There can be at most 2 checks of White at a time.
       if (direction_of_previous_line_check < 5)
         return false;
-      direction_of_previous_line_check = 6;
+      direction_of_previous_line_check = 0;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -1007,7 +1007,7 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_previous_line_check < 6)
+      if (direction_of_previous_line_check % 8)
         return false;
       ++num_unblockable_checks_of_white;
       break;
