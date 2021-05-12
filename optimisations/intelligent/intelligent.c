@@ -891,7 +891,7 @@ FOUND_MOVED_WHITE_PIECE:;
 
   // Restore whatever White pieces are needed to block checks.
   num_extra_blocks_needed_to_protect_white = 0;
-  int direction_of_first_line_check = 0;
+  int direction_of_previous_line_check = 0;
 
   int num_blocks_tmp = get_blocking_pieces_left(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
   switch (num_blocks_tmp)
@@ -899,7 +899,7 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      direction_of_first_line_check = 1;
+      direction_of_previous_line_check = 1;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -913,13 +913,7 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if (direction_of_first_line_check != 1)
-          return false;
-      }
-      else
-        direction_of_first_line_check = 2;
+      direction_of_previous_line_check = 2;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -933,13 +927,9 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if (direction_of_first_line_check != 2)
-          return false;
-      }
-      else
-        direction_of_first_line_check = 3;
+      if (direction_of_previous_line_check && (direction_of_previous_line_check != 2))
+        return false;
+      direction_of_previous_line_check = 3;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -953,13 +943,9 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if (direction_of_first_line_check != 3)
-          return false;
-      }
-      else
-        direction_of_first_line_check = 4;
+      if (direction_of_previous_line_check && (direction_of_previous_line_check != 3))
+        return false;
+      direction_of_previous_line_check = 4;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -973,13 +959,9 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if (direction_of_first_line_check != 4)
-          return false;
-      }
-      else
-        direction_of_first_line_check = 5;
+      if (direction_of_previous_line_check && (direction_of_previous_line_check != 4))
+        return false;
+      direction_of_previous_line_check = 5;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -993,13 +975,9 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if (direction_of_first_line_check != 5)
-          return false;
-      }
-      else
-        direction_of_first_line_check = 6;
+      if (direction_of_previous_line_check && (direction_of_previous_line_check != 5))
+        return false;
+      direction_of_previous_line_check = 6;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -1013,13 +991,9 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if (direction_of_first_line_check != 6)
-          return false;
-      }
-      else
-        direction_of_first_line_check = 7;
+      if (direction_of_previous_line_check && (direction_of_previous_line_check != 6))
+        return false;
+      direction_of_previous_line_check = 1;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
@@ -1033,13 +1007,8 @@ FOUND_MOVED_WHITE_PIECE:;
     case -1:
       if (num_unblockable_checks_of_white > 1)
         return false; // There can be at most 2 checks of White at a time.
-      if (direction_of_first_line_check)
-      {
-        if ((direction_of_first_line_check != 7) && (direction_of_first_line_check != 1))
-          return false;
-      }
-      else
-        direction_of_first_line_check = 8;
+      if (direction_of_previous_line_check && (direction_of_previous_line_check != 1))
+        return false;
       ++num_unblockable_checks_of_white;
       break;
     case 0:
