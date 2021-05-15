@@ -2315,7 +2315,7 @@ void solve_target_position(slice_index si)
   /* solve the problem */
   ResetPosition(&initial_position);
 
-  if (get_target_before_white_move(&initial_position) && target_position_is_ser_h_feasible(true)) {
+  if (get_target_before_white_move(&initial_position) && target_position_is_ser_h_feasible(EP_ON_FIRST_MOVE)) {
 
 #if defined(DETAILS)
     TraceText("target position:\n");
