@@ -278,7 +278,7 @@ static square PositionInDiagram_to_square(int pos)
 {
   pos -= 200;
   return (square) (((pos / 24) * 8) + (pos % 24));
-} 
+}
 
 static square orig_square_of_piece(Flags const flags)
 {
@@ -887,7 +887,7 @@ FOUND_MOVED_WHITE_PIECE:;
   num_unblockable_checks_of_white = num_knight_checks(target_before_white_move, wKPosition, White);
   if (num_unblockable_checks_of_white > 1)
     return false; // There can be at most one Knight check.
-    
+
 
   // Restore whatever White pieces are needed to block checks.
   num_extra_blocks_needed_to_protect_white = 0;
@@ -952,7 +952,7 @@ FOUND_MOVED_WHITE_PIECE:;
       break;
     default:
       num_extra_block_poss_to_protect_white[num_extra_blocks_needed_to_protect_white++] = num_blocks_tmp;
-  }  
+  }
   num_blocks_tmp = get_blocking_pieces_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], wKPosition, White);
   switch (num_blocks_tmp)
   {
@@ -1052,7 +1052,7 @@ FOUND_MOVED_WHITE_PIECE:;
   if (castle_kingside)
   {
     if (num_knight_checks(target_before_white_move, f1, White))
-      return false;      
+      return false;
     num_blocks_tmp = get_blocking_pieces_upper_right(store, square_must_remain_open, target_before_white_move, extra_blocks_to_protect_white[num_extra_blocks_needed_to_protect_white], f1, White);
     switch (num_blocks_tmp)
     {
@@ -1324,7 +1324,7 @@ FOUND_MOVED_WHITE_PIECE:;
   return true;
 }
 
-boolean target_position_is_ser_h_feasible(boolean const first_move)
+boolean target_position_is_ser_h_feasible(EnPassantLegality const ep)
 {
   enum {
     a1, b1, c1, d1, e1, f1, g1, h1,
@@ -1874,17 +1874,31 @@ FOUND_ROOK_MOVE:
             if (!((piece_never_moved >> (index - 16)) & 1U))
               pawn_could_reach[index] |= pawn_could_reach[index - 16];
         }
-        if (col)
-          if ((initial[index - 9].color == White) && !((piece_never_moved >> (index - 9)) & 1U))
+        if (col && !((piece_never_moved >> (index - 9)) & 1U))
+          if ((initial[index - 9].color == White) ||
+              ((ep == EP_CONSEQUENT) &&
+               (row == 3) &&
+               (initial[index - 1].piece == Pawn) &&
+               (initial[index - 1].color == White) &&
+               !(((piece_never_moved >> (index - 1)) |
+                  (piece_never_moved >> (index - 9)) |
+                  (piece_never_moved >> (index - 17))) & 1U)))
             pawn_could_reach[index] |= pawn_could_reach[index - 9];
-        if (col < 7)
-          if ((initial[index - 7].color == White) && !((piece_never_moved >> (index - 7)) & 1U))
+        if ((col < 7) && !((piece_never_moved >> (index - 7)) & 1U))
+          if ((initial[index - 7].color == White) ||
+              ((ep == EP_CONSEQUENT) &&
+               (row == 3) &&
+               (initial[index + 1].piece == Pawn) &&
+               (initial[index + 1].color == White) &&
+               !(((piece_never_moved >> (index + 1)) |
+                  (piece_never_moved >> (index - 7)) |
+                  (piece_never_moved >> (index - 15))) & 1U)))
             pawn_could_reach[index] |= pawn_could_reach[index - 7];
       }
     }
   }
   // Handle an initial en passant capture.
-  if (first_move)
+  if (ep == EP_ON_FIRST_MOVE)
     for (int index = a4; index <= h4; ++index)
       if ((initial[index].piece == Pawn) && (initial[index].color == Black) && !((pawn_checks_white_king >> index) & 1U))
       {
