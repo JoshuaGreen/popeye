@@ -1,3 +1,5 @@
+#if 0
+
 #include "debugging/assert.h"
 #include "options/movenumbers.h"
 #include "solving/move_generator.h"
@@ -36,3 +38,7 @@ void assert_impl(char const *assertion, const char *file, int line)
 
 #endif
 }
+
+#endif
+
+typedef char ensure_nonempty_assert_c;
