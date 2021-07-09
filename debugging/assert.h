@@ -1,3 +1,6 @@
+#ifndef INCLUDE_GUARD_DEBUGGING_TRACE_ASSERT_H
+#    define INCLUDE_GUARD_DEBUGGING_TRACE_ASSERT_H
+
 #if 0
 
 /* This module provides an assert() replacement that prints some contextual
@@ -35,3 +38,4 @@ void assert_impl(char const *assertion, char const *file, int line);
 
 #include <assert.h>
 
+#endif
