@@ -1,3 +1,5 @@
+#if 0
+
 /* This module provides an assert() replacement that prints some contextual
  * informations before terminating because of a failed assert().
  */
@@ -28,3 +30,8 @@
 #endif
 
 void assert_impl(char const *assertion, char const *file, int line);
+
+#endif
+
+#include <assert.h>
+
