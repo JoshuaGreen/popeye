@@ -336,3 +336,241 @@ solution finished.
 solution finished.
 
 
+
+             Eric Huber
+https://github.com/thomas-maeder/popeye/issues/253
+
++---a---b---c---d---e---f---g---h---+
+|                                   |
+8   .   .   .   .   .   .   .   .   8
+|                                   |
+7   .   .   .   .   .   .   .   .   7
+|                                   |
+6   .   .   .   .   .   .   .   .   6
+|                                   |
+5   .   .   .   .   .   .   .   .   5
+|                                   |
+4   .   .   .   .   .   .   .   .   4
+|                                   |
+3   .   .   .   .   .   .   .   .   3
+|                                   |
+2   .   .   .   .   .   .   .   .   2
+|                                   |
+1   .   .   .   .   K   .   .   R   1
+|                                   |
++---a---b---c---d---e---f---g---h---+
+  001                         2 + 0
+           PointReflection
+
+a) 
+
+   1.0-0 !
+
+  add_to_move_generation_stack:          15
+                     play_move:           1
+ is_white_king_square_attacked:           3
+ is_black_king_square_attacked:           0
+
+b) +bSa8  
+
+  add_to_move_generation_stack:           7
+                     play_move:           0
+ is_white_king_square_attacked:           0
+ is_black_king_square_attacked:           0
+
+c) +bSd8  
+
+  add_to_move_generation_stack:          13
+                     play_move:           0
+ is_white_king_square_attacked:           0
+ is_black_king_square_attacked:           0
+
+solution finished.
+
+
+
+            Vlaicu Crisan
+https://github.com/thomas-maeder/popeye/issues/254
+
++---a---b---c---d---e---f---g---h---+
+|                                   |
+8  -K   .   .   .   .   .   .   .   8
+|                                   |
+7   P   .   .   .   P   .   .   .   7
+|                                   |
+6   .   .   .   .   .   .   .   .   6
+|                                   |
+5   .   .   .   .   .   .   .   .   5
+|                                   |
+4   .   .   .   .   .   .   .   .   4
+|                                   |
+3   .   .   .   .   .   .  -P   .   3
+|                                   |
+2   .   .   .   .   .   .  -P   .   2
+|                                   |
+1   .   .   .   .   .   K   .   .   1
+|                                   |
++---a---b---c---d---e---f---g---h---+
+  h#2                         3 + 3
+           AntiCirce Cage
+
+  1.g2-g1=S e7-e8=B   2.g3-g2 Be8-c6 #
+  add_to_move_generation_stack:    93050131
+                     play_move:     6517389
+ is_white_king_square_attacked:      124300
+ is_black_king_square_attacked:      115376
+
+solution finished.
+
+
+
+PDB (P0574726): Gerson Berlinger, 32'er 11-12 1989
+
++---a---b---c---d---e---f---g---h---+
+|                                   |
+8   .   .   .   .   .   .   .   .   8
+|                                   |
+7   .   .   .   .   .   .   .   .   7
+|                                   |
+6   .   .   .   .   .   .   .   .   6
+|                                   |
+5   .   .   .   .   .   .   .   .   5
+|                                   |
+4  -P   P  -K   .   .   .   .   .   4
+|                                   |
+3   K   .  -B   .   .   .   .   .   3
+|                                   |
+2  -P   .   .   .  -P   .   .   .   2
+|                                   |
+1   .   .   .  -S   .   .   .   .   1
+|                                   |
++---a---b---c---d---e---f---g---h---+
+  h=6                         2 + 6
+               Duplex
+
+  1.a4*b3 ep. Ka3-a4   2.Kc4-d3 Ka4-b5   3.Kd3-c2 Kb5-c4   4.Kc2-b1 Kc4-d3   5.Bc3-a1 Kd3*e2   6.b3-b2 Ke2*d1 =
+  add_to_move_generation_stack:    12177338
+                     play_move:    12857728
+ is_white_king_square_attacked:      510274
+ is_black_king_square_attacked:     3327092
+
+  1.Ka3*a4 Bc3*b4 =
+  add_to_move_generation_stack:          69
+                     play_move:          81
+ is_white_king_square_attacked:           2
+ is_black_king_square_attacked:          19
+Partial solution
+
+
+
+               WalterL
+https://github.com/thomas-maeder/popeye/issues/291
+
++---a---b---c---d---e---f---g---h---+
+|                                   |
+8   .   .   .   .   S   .   .  -R   8
+|                                   |
+7   .   .   .   .  -K  -P   .   .   7
+|                                   |
+6   .   .   .   .  -P   .   .   .   6
+|                                   |
+5   .   .   .   .   .   .   .   .   5
+|                                   |
+4   P   P   .   .   .   .   .   .   4
+|                                   |
+3   .   P   .   .   .   .   .   .   3
+|                                   |
+2   .   .   .   .   .   .   .   .   2
+|                                   |
+1   .   .   R   .   K   .   .   .   1
+|                                   |
++---a---b---c---d---e---f---g---h---+
+  h#1                         6 + 4
+    Circe Antipodes RexInclusive
+           Make&TakeChess
+
+a) 
+
+  1.f7-f6 0-0*e7[+bKa3] #
+  add_to_move_generation_stack:       79273
+                     play_move:        2898
+ is_white_king_square_attacked:           0
+ is_black_king_square_attacked:           0
+
+b) +bLf5  
+
+  add_to_move_generation_stack:       71266
+                     play_move:        2640
+ is_white_king_square_attacked:           0
+ is_black_king_square_attacked:           0
+
+c) +bLe4  
+
+  1.f7-f6 0-0*e7[+bKa3] #
+  add_to_move_generation_stack:       78389
+                     play_move:        2853
+ is_white_king_square_attacked:           0
+ is_black_king_square_attacked:           0
+
+solution finished.
+
+
+
+            Michael Barth
+The target position was considered unreachable from the diagram position
+
++---a---b---c---d---e---f---g---h---+
+|                                   |
+8  -R  -S   .  -Q  -K  -B  -S  -R   8
+|                                   |
+7  -P  -P  -P   .  -P  -P  -P  -P   7
+|                                   |
+6   .   .   .   P   .   .   .   .   6
+|                                   |
+5   .   .   .   .   .  -B   .   .   5
+|                                   |
+4   .   .   .   .  -P   .   .   .   4
+|                                   |
+3   .   .   .   .   .   .   .   .   3
+|                                   |
+2   P   P   P   P   .   P   P   P   2
+|                                   |
+1   R   S   B   Q   K   B   S   R   1
+|                                   |
++---a---b---c---d---e---f---g---h---+
+                            16 + 16
+
+            => (White ->)
+
+
++---a---b---c---d---e---f---g---h---+
+|                                   |
+8  -R  -S   .  -Q  -K  -B  -S  -R   8
+|                                   |
+7  -P  -P  -P   .   .  -P  -P  -P   7
+|                                   |
+6   .   .   .   P   .   .   .   .   6
+|                                   |
+5   .   .   .  -P   P  -B   .   .   5
+|                                   |
+4   .   .   .   .  -P   .   .   .   4
+|                                   |
+3   .   .   .   .   .   .   .   .   3
+|                                   |
+2   P   P   P   .   .   P   P   P   2
+|                                   |
+1   R   S   B   Q   K   B   S   R   1
+|                                   |
++---a---b---c---d---e---f---g---h---+
+  a=>b1                     16 + 16
+       ActuatedRevolvingCentre
+
+  1.d2-d4 e7-e5 a=>b
+  add_to_move_generation_stack:         962
+                     play_move:         962
+ is_white_king_square_attacked:          31
+ is_black_king_square_attacked:           3
+
+solution finished.
+
+

@@ -8849,10 +8849,12 @@ conditions/pointreflection$(OBJ_SUFFIX): conditions/pointreflection.c \
  position/castling_rights.h stipulation/stipulation.h \
  stipulation/goals/goals.h stipulation/slice_type.h \
  stipulation/slice_type.enum.h stipulation/slice_type.enum output/mode.h \
- output/mode.enum.h output/mode.enum solving/observation.h \
- solving/machinery/dispatch.h solving/ply.h debugging/trace.h \
- solving/temporary_hacks.h solving/fork.h solving/machinery/solve.h \
- solving/move_generator.h debugging/measure.h output/plaintext/protocol.h \
+ output/mode.enum.h output/mode.enum pieces/walks/classification.h \
+ solving/observation.h solving/machinery/dispatch.h solving/ply.h \
+ debugging/trace.h solving/temporary_hacks.h solving/fork.h \
+ solving/machinery/solve.h solving/castling.h \
+ solving/move_effect_journal.h solving/move_generator.h \
+ debugging/measure.h output/plaintext/protocol.h \
  solving/find_square_observer_tracking_back_from_target.h solving/pipe.h \
  stipulation/pipe.h stipulation/structure_traversal.h stipulation/slice.h \
  stipulation/slice_structural_type.h \
@@ -8914,6 +8916,8 @@ output/mode.enum.h:
 
 output/mode.enum:
 
+pieces/walks/classification.h:
+
 solving/observation.h:
 
 solving/machinery/dispatch.h:
@@ -8927,6 +8931,10 @@ solving/temporary_hacks.h:
 solving/fork.h:
 
 solving/machinery/solve.h:
+
+solving/castling.h:
+
+solving/move_effect_journal.h:
 
 solving/move_generator.h:
 
